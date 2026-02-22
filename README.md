@@ -65,15 +65,35 @@ cd your-project
 
 The setup script:
 - Copies `.ralph/` (scripts, hooks, prompt templates)
-- Installs the `/ralph` slash command for Claude Code
+- Installs the `/ralph` and `/prd` [skills](https://code.claude.com/docs/en/skills) for Claude Code
 - Configures Claude Code hooks in `.claude/settings.local.json`
 - Updates `.gitignore`
 
 ## Usage
 
+### Generating a PRD
+
+Ralph includes tools to convert your specs, planning docs, and design sketches into a structured PRD:
+
+```bash
+# From Claude Code (recommended — uses Claude's full tool suite)
+/prd spec.md planning-session.md sketch.md
+
+# Standalone script (wraps claude -p)
+.ralph/ralph-prd.sh spec.md planning-session.md
+
+# Append more stories to an existing PRD
+/prd additional-spec.md --append
+
+# Custom ID prefix and story limit
+.ralph/ralph-prd.sh --prefix SCP --max 60 spec.md
+```
+
+The PRD generator decomposes your documents into atomic stories grouped into prioritized gates, with dependency tracking, acceptance criteria, and predicted file paths.
+
 ### PRD mode (default)
 
-Edit `.ralph/prd.json` with your stories, then:
+Once you have a PRD (generated or hand-written), start the loop:
 
 ```bash
 .ralph/ralph.sh
@@ -172,41 +192,61 @@ tmux kill-session -t ralph-<project-name>
 
 ## PRD format
 
-`.ralph/prd.json` is a flat array of stories:
+`.ralph/prd.json` contains gates (priority-ordered story groups) and stories:
 
 ```json
 {
   "project": "my-app",
   "description": "A brief project description.",
+  "gates": [
+    {
+      "id": "gate-1",
+      "name": "Core Infrastructure",
+      "priority": "P0",
+      "status": "pending",
+      "stories": ["APP-001", "APP-002"]
+    },
+    {
+      "id": "gate-2",
+      "name": "Features",
+      "priority": "P1",
+      "status": "pending",
+      "stories": ["APP-003", "APP-004"]
+    }
+  ],
   "stories": [
     {
       "id": "APP-001",
       "title": "Add user authentication",
+      "gate": "gate-1",
+      "priority": "P0",
+      "severity": "critical",
+      "status": "pending",
+      "files": ["src/auth/router.ts", "src/auth/middleware.ts"],
       "description": "Implement JWT-based auth with login/signup endpoints.",
       "acceptanceCriteria": [
         "POST /auth/login returns a JWT",
         "POST /auth/signup creates a user and returns a JWT",
         "Protected routes return 401 without a valid token"
       ],
-      "files": ["src/auth/router.ts", "src/auth/middleware.ts"],
-      "status": "pending",
-      "blockedBy": []
-    },
-    {
-      "id": "APP-002",
-      "title": "Add user profile endpoint",
-      "description": "GET /users/me returns the authenticated user's profile.",
-      "acceptanceCriteria": [
-        "Returns 200 with user data when authenticated",
-        "Returns 401 when not authenticated"
+      "actionItems": [
+        "Create auth middleware that validates JWT from Authorization header",
+        "Add login route with bcrypt password comparison",
+        "Add signup route with input validation"
       ],
-      "files": ["src/users/router.ts"],
-      "status": "pending",
-      "blockedBy": ["APP-001"]
+      "blockedBy": [],
+      "details": {}
     }
   ]
 }
 ```
+
+**Required fields** on every story: `id`, `title`, `gate`, `priority`, `severity`, `status`, `files`, `description`, `acceptanceCriteria`, `actionItems`, `blockedBy`, `details`.
+
+- `severity`: `"critical"` | `"major"` | `"minor"`
+- `actionItems`: concrete implementation steps (what to do)
+- `acceptanceCriteria`: concrete verification steps (what to check)
+- `details`: object for arbitrary project-specific metadata (always present, `{}` when empty)
 
 Ralph uses `jq` to read stories in waves of 10 (never loading the full file), selects stories whose `blockedBy` dependencies are resolved, and dispatches them as parallel subagents.
 
@@ -215,9 +255,14 @@ Statuses: `pending` → `in_progress` → `done` | `blocked` | `cancelled`
 ## File structure
 
 ```
+.claude/skills/
+├── ralph/SKILL.md        # /ralph skill
+└── prd/SKILL.md          # /prd skill (PRD generator)
+
 .ralph/
 ├── ralph.sh              # Main loop controller
 ├── ralph-status.sh       # Status reporter
+├── ralph-prd.sh          # Standalone PRD generator
 ├── stop.sh               # Graceful stop helper
 ├── prompt.md             # PRD mode prompt template
 ├── directive.md          # Directive mode prompt template

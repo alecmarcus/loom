@@ -25,11 +25,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -d "$SCRIPT_DIR/.ralph" ]; then
   # Running from Ralph repo root (./setup.sh)
   RALPH_SOURCE="$SCRIPT_DIR/.ralph"
-  COMMAND_SOURCE="$SCRIPT_DIR/.claude/commands/ralph.md"
+  SKILLS_SOURCE="$SCRIPT_DIR/.claude/skills"
 elif [ -d "$SCRIPT_DIR/../.ralph" ]; then
   # setup.sh might be inside .ralph/
   RALPH_SOURCE="$SCRIPT_DIR"
-  COMMAND_SOURCE=""
+  SKILLS_SOURCE=""
 else
   die "Cannot find Ralph source files. Run this script from the Ralph repository root."
 fi
@@ -106,6 +106,7 @@ mkdir -p "$TARGET_DIR/.ralph/logs"
 # Copy scripts
 cp "$RALPH_SOURCE/ralph.sh"        "$TARGET_DIR/.ralph/ralph.sh"
 cp "$RALPH_SOURCE/ralph-status.sh" "$TARGET_DIR/.ralph/ralph-status.sh"
+cp "$RALPH_SOURCE/ralph-prd.sh"    "$TARGET_DIR/.ralph/ralph-prd.sh"
 cp "$RALPH_SOURCE/stop.sh"         "$TARGET_DIR/.ralph/stop.sh"
 cp "$RALPH_SOURCE/prompt.md"       "$TARGET_DIR/.ralph/prompt.md"
 cp "$RALPH_SOURCE/directive.md"    "$TARGET_DIR/.ralph/directive.md"
@@ -131,24 +132,30 @@ fi
 # Make scripts executable
 chmod +x "$TARGET_DIR/.ralph/ralph.sh"
 chmod +x "$TARGET_DIR/.ralph/ralph-status.sh"
+chmod +x "$TARGET_DIR/.ralph/ralph-prd.sh"
 chmod +x "$TARGET_DIR/.ralph/stop.sh"
 chmod +x "$TARGET_DIR/.ralph/hooks/"*.sh
 
 echo -e "  ${GREEN}✓${NC} Copied .ralph/ directory"
 
-# ─── Install Claude Code slash command ───────────────────────────
-mkdir -p "$TARGET_DIR/.claude/commands"
+# ─── Install Claude Code skills ──────────────────────────────────
+mkdir -p "$TARGET_DIR/.claude/skills/ralph"
+mkdir -p "$TARGET_DIR/.claude/skills/prd"
 
-if [ -n "$COMMAND_SOURCE" ] && [ -f "$COMMAND_SOURCE" ]; then
-  cp "$COMMAND_SOURCE" "$TARGET_DIR/.claude/commands/ralph.md"
+if [ -n "$SKILLS_SOURCE" ] && [ -d "$SKILLS_SOURCE" ]; then
+  cp "$SKILLS_SOURCE/ralph/SKILL.md" "$TARGET_DIR/.claude/skills/ralph/SKILL.md"
+  cp "$SKILLS_SOURCE/prd/SKILL.md"   "$TARGET_DIR/.claude/skills/prd/SKILL.md"
 else
-  # Generate the command file inline if source isn't available
-  if [ ! -f "$TARGET_DIR/.claude/commands/ralph.md" ]; then
-    die "Could not find ralph.md command source. Copy it manually from the Ralph repo."
+  if [ ! -f "$TARGET_DIR/.claude/skills/ralph/SKILL.md" ]; then
+    die "Could not find skill sources. Copy them manually from the Ralph repo."
   fi
 fi
 
-echo -e "  ${GREEN}✓${NC} Installed /ralph slash command"
+# Remove old commands if migrating from a previous install
+rm -f "$TARGET_DIR/.claude/commands/ralph.md" "$TARGET_DIR/.claude/commands/prd.md"
+rmdir "$TARGET_DIR/.claude/commands" 2>/dev/null || true
+
+echo -e "  ${GREEN}✓${NC} Installed /ralph and /prd skills"
 
 # ─── Configure Claude Code hooks ────────────────────────────────
 SETTINGS_FILE="$TARGET_DIR/.claude/settings.local.json"

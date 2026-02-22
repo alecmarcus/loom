@@ -1,6 +1,9 @@
 ---
+name: ralph
+description: Start the Ralph autonomous development loop. Launches a tmux session that continuously reads tasks from a PRD, dispatches parallel subagents, runs tests, and commits passing code.
+argument-hint: "[flags or directive text]"
+disable-model-invocation: true
 allowed-tools: Bash
-description: "Start the Ralph autonomous development loop. Usage: /ralph [flags] or /ralph <directive text>"
 ---
 
 # /ralph
@@ -29,13 +32,21 @@ Show run summary:
 
 ### Case 3: `stop`
 
-Find and kill the ralph tmux session:
+Graceful stop (finishes current iteration, then halts):
 
 ```bash
-tmux kill-session -t "ralph-$(basename "$PWD")" 2>/dev/null && echo "Ralph stopped." || echo "Ralph is not running."
+.ralph/stop.sh && echo "Ralph will stop after the current iteration." || echo "Failed to signal stop."
 ```
 
-### Case 4: `linear <query_or_url>`
+### Case 4: `kill`
+
+Immediate kill (terminates the tmux session without waiting):
+
+```bash
+tmux kill-session -t "ralph-$(basename "$PWD")" 2>/dev/null && echo "Ralph killed." || echo "Ralph is not running."
+```
+
+### Case 5: `linear <query_or_url>`
 
 Linear mode — fetch from Linear, implement, update ticket:
 
@@ -45,7 +56,7 @@ unset CLAUDECODE && .ralph/ralph.sh --linear "$REST"
 
 Where `$REST` is everything after the word `linear`.
 
-### Case 5: `github <query_or_url>`
+### Case 6: `github <query_or_url>`
 
 GitHub mode — fetch from GitHub, implement, close issues:
 
@@ -55,7 +66,7 @@ unset CLAUDECODE && .ralph/ralph.sh --github "$REST"
 
 Where `$REST` is everything after the word `github`.
 
-### Case 6: `issue <number>`
+### Case 7: `issue <number>`
 
 Shorthand for GitHub issue mode:
 
@@ -63,7 +74,7 @@ Shorthand for GitHub issue mode:
 unset CLAUDECODE && .ralph/ralph.sh --github "$NUMBER"
 ```
 
-### Case 7: `slack <url>`
+### Case 8: `slack <url>`
 
 Slack mode — fetch Slack message, implement:
 
@@ -71,7 +82,7 @@ Slack mode — fetch Slack message, implement:
 unset CLAUDECODE && .ralph/ralph.sh --slack "$URL"
 ```
 
-### Case 8: Arguments start with `-` (flags only)
+### Case 9: Arguments start with `-` (flags only)
 
 Pass flags through directly:
 
@@ -84,7 +95,7 @@ Examples:
 - `/ralph -m 10` → `unset CLAUDECODE && .ralph/ralph.sh -m 10`
 - `/ralph --dry-run --prompt path/to/file.md` → `unset CLAUDECODE && .ralph/ralph.sh --dry-run --prompt path/to/file.md`
 
-### Case 9: Arguments are plain text (a prompt)
+### Case 10: Arguments are plain text (a prompt)
 
 Write the text to a file and pass it via `--prompt`:
 
@@ -101,12 +112,13 @@ Examples:
 1. If `$ARGUMENTS` is empty → Case 1
 2. If `$ARGUMENTS` equals `status` → Case 2
 3. If `$ARGUMENTS` equals `stop` → Case 3
-4. If `$ARGUMENTS` starts with `linear ` → Case 4
-5. If `$ARGUMENTS` starts with `github ` → Case 5
-6. If `$ARGUMENTS` starts with `issue ` → Case 6
-7. If `$ARGUMENTS` starts with `slack ` → Case 7
-8. If `$ARGUMENTS` starts with `--` or `-` → Case 8
-9. Otherwise → Case 9
+4. If `$ARGUMENTS` equals `kill` → Case 4
+5. If `$ARGUMENTS` starts with `linear ` → Case 5
+6. If `$ARGUMENTS` starts with `github ` → Case 6
+7. If `$ARGUMENTS` starts with `issue ` → Case 7
+8. If `$ARGUMENTS` starts with `slack ` → Case 8
+9. If `$ARGUMENTS` starts with `--` or `-` → Case 9
+10. Otherwise → Case 10
 
 ## After launching
 
