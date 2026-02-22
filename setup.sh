@@ -292,6 +292,65 @@ fi
 
 echo -e "  ${GREEN}✓${NC} Updated .gitignore"
 
+# ─── Update CLAUDE.md ───────────────────────────────────────────
+CLAUDEMD="$TARGET_DIR/CLAUDE.md"
+RALPH_SECTION_MARKER="<!-- ralph:begin -->"
+RALPH_SECTION_END="<!-- ralph:end -->"
+
+RALPH_SECTION="$RALPH_SECTION_MARKER
+## Ralph — Autonomous Development Loop
+
+Ralph runs Claude Code in a continuous loop: read tasks from a PRD, dispatch parallel subagents, run tests, commit green code, repeat.
+
+\`\`\`
+.ralph/              # Autonomous dev loop — dispatches parallel subagents from a PRD
+├── prd.json         # Structured stories with gates (P0/P1/P2), deps, acceptance criteria
+├── prompt.md        # Autonomous iteration instructions (story selection, execution, commit)
+├── directive.md     # Single-task mode instructions (execute one directive, signal result)
+├── status.md        # Current iteration state (read at start, written at end of each cycle)
+├── ralph-prd.sh     # Standalone PRD generator (wraps claude -p)
+├── specs/           # Reference specs and ticket tracking for Ralph
+└── hooks/           # Guard rails: stop signals, interactive blocking, subagent limits
+\`\`\`
+
+### Rules for success
+
+**Stories must be atomic.** Each story is executed by a single subagent in one iteration (~15-30 min). If it can't be done in one shot, split it. Coupled work (model + migration + route) stays together; unrelated work does not.
+
+**Acceptance criteria must be machine-verifiable.** Not \"it works\" but \"POST /api/x returns 200 with a JWT\". If you can't write a test for it, Ralph can't verify it.
+
+**Parallelism requires file isolation.** Stories that touch the same files cannot run in the same batch. Set \`blockedBy\` for true data dependencies; leave it empty otherwise to maximize parallelism.
+
+**Green tests are a hard gate.** Ralph never commits failing code. Test failures are recorded in status.md and become top priority for the next iteration. After 3 failed fix attempts within one iteration, Ralph stops and records the state.
+
+**Context is the scarcest resource.** Read prd.json in jq waves of 10. Never cat entire files. Use dedicated tools (Read, Grep, Glob) instead of shell commands. status.md is the only continuity across loop restarts — write it thoroughly.
+
+**Search before building.** Subagents must search the codebase before assuming something is missing. Reimplementing existing code is a common failure mode.
+
+**Scope is sacred.** Implement only the assigned story. Do not \"fix\" adjacent code, add unrequested features, or refactor code that seems inconsistent with other specs.
+$RALPH_SECTION_END"
+
+if [ -f "$CLAUDEMD" ]; then
+  if grep -qF "$RALPH_SECTION_MARKER" "$CLAUDEMD" 2>/dev/null; then
+    # Replace existing Ralph section
+    # Use awk to replace content between markers
+    awk -v replacement="$RALPH_SECTION" '
+      /<!-- ralph:begin -->/ { print replacement; skip=1; next }
+      /<!-- ralph:end -->/ { skip=0; next }
+      !skip { print }
+    ' "$CLAUDEMD" > "${CLAUDEMD}.tmp" && mv "${CLAUDEMD}.tmp" "$CLAUDEMD"
+    echo -e "  ${GREEN}✓${NC} Updated Ralph section in CLAUDE.md"
+  else
+    # Append Ralph section
+    printf '\n%s\n' "$RALPH_SECTION" >> "$CLAUDEMD"
+    echo -e "  ${GREEN}✓${NC} Added Ralph section to CLAUDE.md"
+  fi
+else
+  # Create new CLAUDE.md
+  printf '%s\n' "$RALPH_SECTION" > "$CLAUDEMD"
+  echo -e "  ${GREEN}✓${NC} Created CLAUDE.md with Ralph section"
+fi
+
 # ─── Done ────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}Ralph installed successfully!${NC}"
