@@ -258,36 +258,6 @@ fi
 
 echo -e "  ${GREEN}✓${NC} Configured Claude Code hooks"
 
-# ─── Update .gitignore ───────────────────────────────────────────
-GITIGNORE="$TARGET_DIR/.gitignore"
-LOOM_IGNORES=(
-  "# Loom autonomous loop"
-  ".loom/logs/"
-  ".loom/.stop"
-  ".loom/.pid"
-  ".loom/.directive"
-  ".loom/.piped_directive"
-  ".loom/.iteration_marker"
-  ".loom/loom.log"
-)
-
-if [ -f "$GITIGNORE" ]; then
-  NEEDS_NEWLINE=true
-  for entry in "${LOOM_IGNORES[@]}"; do
-    if ! grep -qF "$entry" "$GITIGNORE" 2>/dev/null; then
-      if $NEEDS_NEWLINE; then
-        echo "" >> "$GITIGNORE"
-        NEEDS_NEWLINE=false
-      fi
-      echo "$entry" >> "$GITIGNORE"
-    fi
-  done
-else
-  printf '%s\n' "${LOOM_IGNORES[@]}" > "$GITIGNORE"
-fi
-
-echo -e "  ${GREEN}✓${NC} Updated .gitignore"
-
 # ─── Update CLAUDE.md ───────────────────────────────────────────
 CLAUDEMD="$TARGET_DIR/CLAUDE.md"
 LOOM_SECTION_MARKER="<!-- loom:begin -->"
