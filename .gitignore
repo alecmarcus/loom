@@ -7,9 +7,6 @@
 .loom/.iteration_marker
 .loom/loom.log
 
-# Claude Code local settings (contains hook paths specific to each machine)
-.claude/settings.local.json
-
 # Caches
 .fastembed_cache/
 
