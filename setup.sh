@@ -62,6 +62,7 @@ echo ""
 MISSING=()
 command -v claude &>/dev/null || MISSING+=("claude (Claude Code CLI)")
 command -v jq &>/dev/null     || MISSING+=("jq")
+command -v mdq &>/dev/null    || MISSING+=("mdq")
 command -v git &>/dev/null    || MISSING+=("git")
 command -v tmux &>/dev/null   || MISSING+=("tmux (recommended, not required)")
 
@@ -76,6 +77,9 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   fi
   if ! command -v jq &>/dev/null; then
     die "jq is required. Install it: brew install jq (macOS) or apt install jq (Linux)"
+  fi
+  if ! command -v mdq &>/dev/null; then
+    die "mdq is required. Install it: brew install mdq (macOS) or cargo install mdq"
   fi
   if ! command -v git &>/dev/null; then
     die "git is required."

@@ -33,6 +33,7 @@ install_pkg() {
 }
 
 install_pkg jq
+install_pkg mdq
 install_pkg tmux
 
 if ! command -v claude &>/dev/null; then

@@ -77,6 +77,7 @@ Safety is enforced by Claude Code hooks — not just prompt instructions:
 - git
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) (`claude` in PATH)
 - [jq](https://jqlang.github.io/jq/)
+- [mdq](https://github.com/yshavit/mdq) (markdown query tool, used by `/prd` to extract sections from spec files)
 - [tmux](https://github.com/tmux/tmux/wiki) (recommended — provides split-pane monitoring)
 
 ## Installation
@@ -95,11 +96,14 @@ curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | b
 
 ### Manual setup
 
-If you don't have them, install `jq` and `tmux`:
+If you don't have them, install `jq`, `mdq`, and `tmux`:
 
 ```bash
 # Loom uses jq to pre-parse JSON before sending to claude, optimizing context
 brew install jq
+
+# mdq extracts sections from markdown spec files during PRD generation
+brew install mdq
 
 # tmux provides split-pane monitoring stream inside the terminal
 brew install tmux
