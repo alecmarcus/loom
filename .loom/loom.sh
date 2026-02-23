@@ -130,12 +130,8 @@ while [[ $# -gt 0 ]]; do
       USE_WORKTREE="yes"
       shift
       ;;
-    --no-worktree)
-      USE_WORKTREE="no"
-      shift
-      ;;
-    --no-pr)
-      CREATE_PR="no"
+    --pr)
+      CREATE_PR="yes"
       shift
       ;;
     --resume)
@@ -171,15 +167,9 @@ Sources (can be combined):
     echo 'Only work on AC-001' | loom.sh --dry-run
 
 Worktree:
-  --worktree              Force git worktree mode
-  --no-worktree           Disable git worktree mode
-  --no-pr                 Skip push + PR creation after loop
+  --worktree              Git worktree isolation (default: on)
+  --pr                    Push + PR after loop (default: on)
   --resume PATH_OR_BRANCH Reuse existing worktree
-
-  Worktree is on by default. When a worktree loop completes, the
-  branch is pushed and a PR is created automatically.
-  Use --no-pr to skip PR creation. Use --no-worktree to disable
-  worktree mode entirely (also skips PR creation).
 
 Graceful stop:
   touch .loom/.stop      Stop after the current iteration finishes
@@ -370,7 +360,6 @@ fi
 # ─── Worktree Auto-Detection ────────────────────────────────────
 resolve_worktree() {
   if [ -z "$USE_WORKTREE" ]; then
-    # Auto: on if any issue-tracker source is active
     USE_WORKTREE="yes"
   fi
 }
@@ -730,14 +719,9 @@ if $USE_TMUX; then
     FORWARD_FLAGS="$FORWARD_FLAGS --prompt $(printf '%q' "$SOURCES_PROMPT")"
   fi
 
-  # Forward worktree and PR overrides
-  if [ "$CREATE_PR" = "no" ]; then
-    FORWARD_FLAGS="$FORWARD_FLAGS --no-pr"
-  fi
+  # Forward worktree override
   if [ "$USE_WORKTREE" = "yes" ] && [ -z "$RESUME_WORKTREE" ]; then
     FORWARD_FLAGS="$FORWARD_FLAGS --worktree"
-  elif [ "$USE_WORKTREE" = "no" ]; then
-    FORWARD_FLAGS="$FORWARD_FLAGS --no-worktree"
   fi
   if [ -n "$RESUME_WORKTREE" ]; then
     FORWARD_FLAGS="$FORWARD_FLAGS --resume $(printf '%q' "$RESUME_WORKTREE")"
@@ -788,7 +772,7 @@ MODE_LABEL="${MODE_LABEL:-prd}"
 # ─── Banner ──────────────────────────────────────────────────────
 echo -e "${CYAN}"
 echo "  ╔═══════════════════════════════════════════╗"
-echo "  ║            R A L P H   L O O P            ║"
+echo "  ║             L O O M   L O O P             ║"
 echo "  ╚═══════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  ${DIM}PID${NC}   ${BOLD}$$${NC}"

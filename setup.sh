@@ -51,7 +51,7 @@ fi
 
 echo -e "${CYAN}"
 echo "  ╔═══════════════════════════════════════════╗"
-echo "  ║          R A L P H   S E T U P            ║"
+echo "  ║           L O O M   S E T U P             ║"
 echo "  ╚═══════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  ${DIM}Source${NC}  $LOOM_SOURCE"

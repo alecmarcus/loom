@@ -77,7 +77,7 @@ Safety is enforced by Claude Code hooks — not just prompt instructions:
 - git
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) (`claude` in PATH)
 - [jq](https://jqlang.github.io/jq/)
-- [tmux]https://github.com/tmux/tmux/wiki (recommended — provides split-pane monitoring)
+- [tmux](https://github.com/tmux/tmux/wiki) (recommended — provides split-pane monitoring)
 
 ## Installation
 
@@ -138,7 +138,7 @@ Sources tell Loom where to get work. Without a source, Loom defaults to PRD mode
 | Notion | `--notion` | `/loom notion` | page URL, search query | Notion MCP | Notion API key |
 | Sentry | `--sentry` | `/loom sentry` | issue URL, search query | Sentry MCP | Sentry auth token |
 
-Loom always runs in a git worktree by default — an isolated branch so your main tree stays clean. When the loop completes, the branch is pushed and a PR is created automatically. Disable with `--no-worktree` or `--no-pr`.
+Loom always runs in a git worktree — an isolated branch so your main tree stays clean. When the loop completes, the branch is pushed and a PR is created automatically.
 
 #### Examples
 
@@ -197,9 +197,8 @@ The PRD generator decomposes your documents into atomic stories grouped into pri
 | `--dry-run` | `-d` | off | Analyze one iteration without executing changes |
 | `--timeout` | — | `3600` | Per-iteration timeout in seconds |
 | `--max-failures` | — | `3` | Consecutive failures before halt |
-| `--worktree` | — | on | Force git worktree mode |
-| `--no-worktree` | — | on | Disable git worktree mode |
-| `--no-pr` | — | on | Skip push + PR creation after loop |
+| `--worktree` | — | on | Git worktree isolation |
+| `--pr` | — | on | Push branch + create PR after loop |
 | `--resume` | — | — | Resume an existing worktree by path or branch |
 
 ### Monitoring
