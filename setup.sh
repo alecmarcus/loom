@@ -109,6 +109,7 @@ cp "$LOOM_SOURCE/prd.sh"    "$TARGET_DIR/.loom/prd.sh"
 cp "$LOOM_SOURCE/stop.sh"         "$TARGET_DIR/.loom/stop.sh"
 cp "$LOOM_SOURCE/prompt.md"       "$TARGET_DIR/.loom/prompt.md"
 cp "$LOOM_SOURCE/directive.md"    "$TARGET_DIR/.loom/directive.md"
+cp "$LOOM_SOURCE/.gitignore"     "$TARGET_DIR/.loom/.gitignore"
 
 # Copy hooks
 for hook in "$LOOM_SOURCE/hooks/"*.sh; do
