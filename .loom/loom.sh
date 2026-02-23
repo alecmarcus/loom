@@ -127,12 +127,14 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --worktree)
-      USE_WORKTREE="yes"
-      shift
+      [[ $# -ge 2 ]] || die "$1 requires true or false"
+      USE_WORKTREE=$([ "$2" = "true" ] && echo "yes" || echo "no")
+      shift 2
       ;;
     --pr)
-      CREATE_PR="yes"
-      shift
+      [[ $# -ge 2 ]] || die "$1 requires true or false"
+      CREATE_PR=$([ "$2" = "true" ] && echo "yes" || echo "no")
+      shift 2
       ;;
     --resume)
       [[ $# -ge 2 ]] || die "$1 requires a worktree path or branch name"
