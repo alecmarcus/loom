@@ -127,18 +127,18 @@ Everything in Loom can be run from the `/loom` slash command inside Claude Code 
 
 Sources tell Loom where to get work. Without a source, Loom defaults to PRD mode (reads `.loom/prd.json`). Sources can be combined — e.g., `--github 42 --prompt "Also fix lint"`.
 
-| Source | Bash flag | `/loom` subcommand | Accepts | Worktree | MCP / tool required | Auth |
-|--------|-----------|-------------------|---------|----------|-------------------|------|
-| PRD | *(default)* | `/loom` | — | off | — | — |
-| Prompt | `--prompt` | `/loom <text>` | text, file path | off | — | — |
-| Piped | `echo "..." \| .loom/loom.sh` | — | stdin | off | — | — |
-| GitHub | `--github` | `/loom github` | issue #, URL, search query | **on** | `gh` CLI | `gh auth login` |
-| Linear | `--linear` | `/loom linear` | ticket ID, URL, search query | **on** | Linear MCP | Linear API key |
-| Slack | `--slack` | `/loom slack` | permalink URL | **on** | Slack MCP | Slack OAuth |
-| Notion | `--notion` | `/loom notion` | page URL, search query | **on** | Notion MCP | Notion API key |
-| Sentry | `--sentry` | `/loom sentry` | issue URL, search query | **on** | Sentry MCP | Sentry auth token |
+| Source | Bash flag | `/loom` subcommand | Accepts | MCP / tool required | Auth |
+|--------|-----------|-------------------|---------|-------------------|------|
+| PRD | *(default)* | `/loom` | — | — | — |
+| Prompt | `--prompt` | `/loom <text>` | text, file path | — | — |
+| Piped | `echo "..." \| .loom/loom.sh` | — | stdin | — | — |
+| GitHub | `--github` | `/loom github` | issue #, URL, search query | `gh` CLI | `gh auth login` |
+| Linear | `--linear` | `/loom linear` | ticket ID, URL, search query | Linear MCP | Linear API key |
+| Slack | `--slack` | `/loom slack` | permalink URL | Slack MCP | Slack OAuth |
+| Notion | `--notion` | `/loom notion` | page URL, search query | Notion MCP | Notion API key |
+| Sentry | `--sentry` | `/loom sentry` | issue URL, search query | Sentry MCP | Sentry auth token |
 
-When worktree is **on**, Loom creates an isolated git worktree + branch so your main tree stays clean. Override with `--worktree` / `--no-worktree`.
+Loom always runs in a git worktree by default — an isolated branch so your main tree stays clean. Disable with `--no-worktree`.
 
 #### Examples
 

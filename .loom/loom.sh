@@ -170,9 +170,7 @@ Worktree:
   --no-worktree           Disable git worktree mode
   --resume PATH_OR_BRANCH Reuse existing worktree
 
-  Worktree is on by default for all source integrations
-  (--linear, --github, --slack, --notion, --sentry),
-  off for PRD, --prompt, and piped stdin.
+  Worktree is on by default. Use --no-worktree to disable.
 
 Graceful stop:
   touch .loom/.stop      Stop after the current iteration finishes
@@ -364,11 +362,7 @@ fi
 resolve_worktree() {
   if [ -z "$USE_WORKTREE" ]; then
     # Auto: on if any issue-tracker source is active
-    if [ -n "$SOURCES_LINEAR" ] || [ -n "$SOURCES_GITHUB" ] || [ -n "$SOURCES_SLACK" ] || [ -n "$SOURCES_NOTION" ] || [ -n "$SOURCES_SENTRY" ]; then
-      USE_WORKTREE="yes"
-    else
-      USE_WORKTREE="no"
-    fi
+    USE_WORKTREE="yes"
   fi
 }
 
