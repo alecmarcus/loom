@@ -41,9 +41,9 @@ echo -e "${CYAN}${BOLD}Iteration Summary${NC}"
 echo -e "${DIM}─────────────────────────────────────────${NC}"
 
 TOTAL=$(wc -l < "$MASTER_LOG" | tr -d ' ')
-SUCCESS=$(grep -c '| exit-0 |' "$MASTER_LOG" 2>/dev/null || echo 0)
-TIMEOUT=$(grep -c '| timeout |' "$MASTER_LOG" 2>/dev/null || echo 0)
-HALTED=$(grep -c '| HALTED |' "$MASTER_LOG" 2>/dev/null || echo 0)
+SUCCESS=$(grep -c '| exit-0 |' "$MASTER_LOG" 2>/dev/null || true)
+TIMEOUT=$(grep -c '| timeout |' "$MASTER_LOG" 2>/dev/null || true)
+HALTED=$(grep -c '| HALTED |' "$MASTER_LOG" 2>/dev/null || true)
 FAILURES=$((TOTAL - SUCCESS - TIMEOUT - HALTED))
 
 echo -e "  Total iterations: ${BOLD}$TOTAL${NC}"
@@ -52,9 +52,9 @@ echo -e "  Failed:           ${RED}$FAILURES${NC}"
 echo -e "  Timed out:        ${YELLOW}$TIMEOUT${NC}"
 
 # Signal breakdown
-SIG_SUCCESS=$(grep -c '| SUCCESS$' "$MASTER_LOG" 2>/dev/null || echo 0)
-SIG_PARTIAL=$(grep -c '| PARTIAL$' "$MASTER_LOG" 2>/dev/null || echo 0)
-SIG_FAILED=$(grep -c '| FAILED$' "$MASTER_LOG" 2>/dev/null || echo 0)
+SIG_SUCCESS=$(grep -c '| SUCCESS$' "$MASTER_LOG" 2>/dev/null || true)
+SIG_PARTIAL=$(grep -c '| PARTIAL$' "$MASTER_LOG" 2>/dev/null || true)
+SIG_FAILED=$(grep -c '| FAILED$' "$MASTER_LOG" 2>/dev/null || true)
 
 echo ""
 echo -e "${CYAN}${BOLD}Result Signals${NC}"

@@ -547,6 +547,9 @@ Automated changes by Loom.
       ;;
   esac
 
+  # Ensure the label exists (create it if missing)
+  gh label create "$pr_labels" --description "Automated by Loom" --color "6A0DAD" 2>/dev/null || true
+
   # Create the PR
   log "${CYAN}Creating PR...${NC}"
   local pr_url
