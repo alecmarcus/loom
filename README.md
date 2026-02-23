@@ -138,7 +138,7 @@ Sources tell Loom where to get work. Without a source, Loom defaults to PRD mode
 | Notion | `--notion` | `/loom notion` | page URL, search query | Notion MCP | Notion API key |
 | Sentry | `--sentry` | `/loom sentry` | issue URL, search query | Sentry MCP | Sentry auth token |
 
-Loom always runs in a git worktree by default — an isolated branch so your main tree stays clean. Disable with `--no-worktree`.
+Loom always runs in a git worktree by default — an isolated branch so your main tree stays clean. When the loop completes, the branch is pushed and a PR is created automatically. Disable with `--no-worktree` or `--no-pr`.
 
 #### Examples
 
@@ -197,8 +197,9 @@ The PRD generator decomposes your documents into atomic stories grouped into pri
 | `--dry-run` | `-d` | off | Analyze one iteration without executing changes |
 | `--timeout` | — | `3600` | Per-iteration timeout in seconds |
 | `--max-failures` | — | `3` | Consecutive failures before halt |
-| `--worktree` | — | auto | Force git worktree mode |
-| `--no-worktree` | — | auto | Disable git worktree mode |
+| `--worktree` | — | on | Force git worktree mode |
+| `--no-worktree` | — | on | Disable git worktree mode |
+| `--no-pr` | — | on | Skip push + PR creation after loop |
 | `--resume` | — | — | Resume an existing worktree by path or branch |
 
 ### Monitoring
