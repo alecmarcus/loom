@@ -192,10 +192,17 @@ done
 
 # ─── Piped stdin ─────────────────────────────────────────────────
 if [ ! -t 0 ]; then
-  PIPED="$(timeout 1 cat 2>/dev/null || true)"
+  # detect_timeout_cmd runs later, so resolve timeout binary inline here
+  _tc=""; command -v gtimeout &>/dev/null && _tc=gtimeout || command -v timeout &>/dev/null && _tc=timeout
+  if [ -n "$_tc" ]; then
+    PIPED="$("$_tc" 1 cat 2>/dev/null || true)"
+  else
+    PIPED="$(cat 2>/dev/null || true)"
+  fi
   if [ -n "$PIPED" ]; then
     SOURCES_PIPED="$PIPED"
   fi
+  unset _tc
 fi
 
 # ─── Build Directive Content ─────────────────────────────────────
