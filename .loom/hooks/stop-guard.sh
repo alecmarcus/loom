@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ─── Loom Stop Guard ────────────────────────────────────────────
 # Blocks the agent from exiting until status.md has been updated
-# this iteration. Only active inside a Loom loop (LOOM_ACTIVE=1).
+# this iteration. Also nudges about docs and memory.
+# Only active inside a Loom loop (LOOM_ACTIVE=1).
 # ─────────────────────────────────────────────────────────────────
 
 # No-op outside Loom
@@ -35,25 +36,42 @@ You must write a fresh status report before exiting:
   - Tests Added / Updated
   - Outcomes (story ID or directive summary, pass/fail for each)
 
-Before writing status.md, also check:
-
-Documentation:
-  - Root .docs/ and CLAUDE.md — update if you changed project-wide patterns,
-    APIs, architecture, or conventions that future agents need to know about.
-  - Feature-scoped .docs/ and CLAUDE.md — if you worked in a feature directory
-    (e.g. src/auth/), create or update a .docs/ dir and/or CLAUDE.md there
-    with usage notes, constraints, and gotchas specific to that feature.
-
-Memory:
-  - If you discovered patterns, gotchas, or architectural decisions worth
-    preserving, store them using available memory storage or tools so future
-    iterations can benefit.
-
 Ensure all commits (if tests pass), documentation updates, and memory storage
 are done before writing status.md — the write triggers an immediate kill.
 MSG
     exit 2
   fi
+fi
+
+# ─── Nudge: docs and memory ──────────────────────────────────────
+# Advisory block (block + continue) — same pattern as subagent stop guard.
+
+MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // empty')
+NUDGES=""
+
+# Check if the orchestrator did work but didn't mention .docs updates
+if echo "$MESSAGE" | grep -qiE '(created|added|implemented|built|wrote|completed|committed)' && \
+   ! echo "$MESSAGE" | grep -qiE '(\.docs|CLAUDE\.md|documentation|ADR|adr|lessons)'; then
+  NUDGES="Documentation reminder: If this iteration introduced new patterns, architectural decisions, or lessons learned, update the relevant .docs/ artifacts and/or CLAUDE.md:
+  - Root .docs/ and CLAUDE.md for project-wide knowledge (ADRs, specs, lessons, architecture)
+  - Feature-scoped .docs/ and CLAUDE.md (e.g. src/auth/.docs/) for feature-specific design notes, API decisions, and internal conventions
+  Create feature-scoped .docs/ directories when a feature area has design context worth preserving close to the code."
+fi
+
+# Check if the orchestrator discovered patterns/gotchas but didn't mention memory
+if echo "$MESSAGE" | grep -qiE '(pattern|gotcha|workaround|discovered|learned|tricky|edge case|caveat)' && \
+   ! echo "$MESSAGE" | grep -qiE '(memory|stored|logged|recorded|persisted|vestige|smart_ingest|remember_pattern)'; then
+  NUDGES="${NUDGES:+$NUDGES
+
+}Memory reminder: If you discovered patterns, gotchas, or architectural decisions worth preserving, store them using available memory storage or tools so future iterations can benefit."
+fi
+
+if [ -n "$NUDGES" ]; then
+  jq -n --arg reason "$NUDGES" '{
+    decision: "block",
+    reason: $reason
+  }'
+  exit 0
 fi
 
 exit 0
