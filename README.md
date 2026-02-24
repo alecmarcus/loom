@@ -189,7 +189,7 @@ The PRD generator decomposes your documents into atomic stories grouped into pri
 |------|-------|-------|-------------|
 | `--max-iterations` | `-m` | `500` | Maximum loop iterations |
 | `--dry-run` | `-d` | off | Analyze one iteration without executing changes |
-| `--timeout` | — | `3600` | Per-iteration timeout in seconds |
+| `--timeout` | — | `10800` | Per-iteration timeout in seconds |
 | `--max-failures` | — | `3` | Consecutive failures before halt |
 | `--worktree` | — | on | Git worktree isolation |
 | `--pr` | — | on | Push branch + create PR after loop |
