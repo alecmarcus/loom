@@ -41,13 +41,10 @@ fi
 
 # Check if the subagent discovered patterns/gotchas but didn't mention Vestige
 if echo "$MESSAGE" | grep -qiE '(pattern|gotcha|workaround|discovered|learned|tricky|edge case|caveat)' && \
-   ! echo "$MESSAGE" | grep -qiE '(vestige|mcp__vestige|smart_ingest|remember_pattern|remember_decision|memory)'; then
+   ! echo "$MESSAGE" | grep -qiE '(memory|stored|logged|recorded|persisted|vestige|smart_ingest|remember_pattern)'; then
   NUDGES="${NUDGES:+$NUDGES
 
-}Memory reminder: If you discovered patterns, gotchas, or architectural decisions worth preserving, store them in Vestige so future iterations can benefit:
-  - Code patterns: mcp__vestige__codebase(action: \"remember_pattern\", ...)
-  - Architectural decisions: mcp__vestige__codebase(action: \"remember_decision\", ...)
-  - Gotchas/warnings: mcp__vestige__smart_ingest(content: \"...\", tags: [\"<project>\", \"gotcha\"])"
+}Memory reminder: If you discovered patterns, gotchas, or architectural decisions worth preserving, store them using available memory storage or tools so future iterations can benefit."
 fi
 
 if [ -n "$NUDGES" ]; then
