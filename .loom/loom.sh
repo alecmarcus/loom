@@ -702,6 +702,12 @@ if [ "$USE_WORKTREE" = "yes" ]; then
   rm -f "$SOURCE_LOOM_DIR/.pid"
   PID_FILE="$LOOM_DIR/.pid"
   echo $$ > "$PID_FILE"
+  # Relocate composed directive into the worktree so concurrent looms
+  # don't overwrite each other's directives.
+  if [ -n "$DIRECTIVE_FILE" ] && [ "$DIRECTIVE_FILE" = "$SOURCE_LOOM_DIR/.directive" ]; then
+    cp "$DIRECTIVE_FILE" "$LOOM_DIR/.directive"
+    DIRECTIVE_FILE="$LOOM_DIR/.directive"
+  fi
 fi
 
 # ─── Tmux Launch ─────────────────────────────────────────────────
@@ -771,6 +777,10 @@ if $USE_TMUX; then
   if [ -z "${CLAUDECODE:-}" ]; then
     exec tmux attach -t "$TMUX_SESSION"
   fi
+  # The tmux child owns all runtime state now — disable cleanup so the
+  # parent doesn't delete files (.directive, .piped_directive) before
+  # the async child reads them. The child handles its own cleanup.
+  trap - EXIT
   exit 0
 fi
 
