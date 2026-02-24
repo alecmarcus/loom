@@ -25,10 +25,10 @@ You can loom from inside Claude Code, or with the bash script.
   ```sh
   # Both the slash command and bash script default to work through the PRD until done
   /loom
-  
+
   # You can skip the PRD and give it a task directly
   /loom Refactor all callbacks to async/await
-  
+
   # Or pass queries to MCPs
   /loom github 42
   /loom linear TEAM-42
@@ -60,20 +60,9 @@ Each iteration:
 5. **Commit** — commits only green code using conventional commits
 6. **Report** — writes `status.md`, which triggers a hard kill and loop restart
 
-Safety is enforced by Claude Code hooks — not just prompt instructions:
+## Installation
 
-| Hook | Purpose |
-|------|---------|
-| `bash-guard.sh` | Blocks destructive commands (`rm -rf /`, `git push --force`, etc.) |
-| `block-interactive.sh` | Prevents `EnterPlanMode` and `AskUserQuestion` (no human present) |
-| `block-task-output.sh` | Prevents `TaskOutput` polling (results auto-deliver) |
-| `background-tasks.sh` | Forces all subagents to run in background |
-| `status-kill.sh` | Hard-kills the agent when `status.md` is written |
-| `stop-guard.sh` | Blocks exit until `status.md` has been updated |
-| `subagent-recall.sh` | Nudges subagents to check .docs, CLAUDE.md, and memory before starting |
-| `subagent-stop-guard.sh` | Validates subagent output and nudges to update docs + memory |
-
-## Prerequisites
+### Prerequisites
 
 - git
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) (`claude` in PATH)
@@ -81,21 +70,9 @@ Safety is enforced by Claude Code hooks — not just prompt instructions:
 - [mdq](https://github.com/yshavit/mdq) (markdown query tool, used by `/prd` to extract sections from spec files)
 - [tmux](https://github.com/tmux/tmux/wiki) (recommended — provides split-pane monitoring)
 
-### Optional MCP servers
+### Install script
 
-Loom subagents can use any MCP tools configured in the project. These are useful for stories with visual, browser, or mobile acceptance criteria.
-
-| MCP | Install | Capability | What it provides |
-|-----|---------|------------|------------------|
-| [Playwright](https://github.com/microsoft/playwright-mcp) | `claude mcp add playwright -- npx @playwright/mcp@latest --headless` | `browser` | Browser automation, screenshots, DOM interaction. Use `--headless` for unattended Loom runs. |
-| [Mobile MCP](https://github.com/mobile-next/mobile-mcp) | `claude mcp add mobile -- npx -y @mobilenext/mobile-mcp@latest` | `mobile` | iOS Simulator + Android Emulator screenshots, tap, swipe, app management. Requires a running simulator/emulator. |
-| [Figma](https://developers.figma.com/docs/figma-mcp-server/) | `claude mcp add --transport http figma https://mcp.figma.com/mcp` | `design` | Full Figma integration (Code Connect, design system rules, bidirectional). Requires interactive OAuth on first use — better for interactive sessions than unattended Loom runs. |
-
-To scope an MCP server to a single project, add it to your project's `.mcp.json` instead of global config. Loom copies `.mcp.json` into worktrees automatically.
-
-## Installation
-
-You can run the remote install script, which shallow-clones the necessary files from this repo into a temporary directory, installs brew deps, runs `setup.sh` in the cwd, and cleans itself up after.
+The remote install script shallow-clones the necessary files from this repo into a temporary directory, installs brew deps, runs `setup.sh` in the cwd, and cleans itself up after.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
@@ -145,15 +122,15 @@ Everything in Loom can be run from the `/loom` slash command inside Claude Code 
 Sources tell Loom where to get work. Without a source, Loom defaults to PRD mode (reads `.loom/prd.json`). Sources can be combined — e.g., `--github 42 --prompt "Also fix lint"`.
 
 | Source | Bash flag | `/loom` subcommand | Accepts | MCP / tool required | Auth |
-|--------|-----------|-------------------|---------|-------------------|------|
+|--------|-----------|-------------------|-------|-------------------|------|
 | PRD | *(default)* | `/loom` | — | — | — |
 | Prompt | `--prompt` | `/loom <text>` | text, file path | — | — |
 | Piped | `echo "..." \| .loom/start.sh` | — | stdin | — | — |
 | GitHub | `--github` | `/loom github` | issue #, URL, search query | `gh` CLI | `gh auth login` |
-| Linear | `--linear` | `/loom linear` | ticket ID, URL, search query | Linear MCP | Linear API key |
-| Slack | `--slack` | `/loom slack` | permalink URL | Slack MCP | Slack OAuth |
-| Notion | `--notion` | `/loom notion` | page URL, search query | Notion MCP | Notion API key |
-| Sentry | `--sentry` | `/loom sentry` | issue URL, search query | Sentry MCP | Sentry auth token |
+| Linear | `--linear` | `/loom linear` | ticket ID, URL, search query | [Linear MCP](https://mcp.linear.app) | OAuth |
+| Slack | `--slack` | `/loom slack` | permalink URL | [Slack MCP](https://mcp.slack.com) | OAuth |
+| Notion | `--notion` | `/loom notion` | page URL, search query | [Notion MCP](https://mcp.notion.com) | OAuth |
+| Sentry | `--sentry` | `/loom sentry` | issue URL, search query | [Sentry MCP](https://mcp.sentry.dev) | OAuth |
 
 Loom always runs in a git worktree — an isolated branch so your main tree stays clean. When the loop completes, the branch is pushed and a PR is created automatically.
 
@@ -201,7 +178,7 @@ Loom always runs in a git worktree — an isolated branch so your main tree stay
 .loom/prd.sh spec.md planning-session.md
 
 # Append to existing PRD
-/prd additional-spec.md --append
+/prd additional-spec.md append
 ```
 
 The PRD generator decomposes your documents into atomic stories grouped into prioritized gates, with dependency tracking, acceptance criteria, and predicted file paths.
@@ -209,7 +186,7 @@ The PRD generator decomposes your documents into atomic stories grouped into pri
 ### Options
 
 | Flag | Short | Default | Description |
-|------|-------|---------|-------------|
+|------|-------|-------|-------------|
 | `--max-iterations` | `-m` | `500` | Maximum loop iterations |
 | `--dry-run` | `-d` | off | Analyze one iteration without executing changes |
 | `--timeout` | — | `3600` | Per-iteration timeout in seconds |
@@ -218,12 +195,76 @@ The PRD generator decomposes your documents into atomic stories grouped into pri
 | `--pr` | — | on | Push branch + create PR after loop |
 | `--resume` | — | — | Resume an existing worktree by path or branch |
 
-### Monitoring
+## MCP integrations
+
+Loom subagents can use any MCP tools configured in the project. These are especially useful for stories with visual, browser, or mobile acceptance criteria.
+
+### Supported servers
+
+| MCP | Install | Capability | What it provides |
+|-----|-------|------------|------------------|
+| [Playwright](https://github.com/microsoft/playwright-mcp) | `claude mcp add playwright -- npx @playwright/mcp@latest --headless` | `browser` | Browser automation, screenshots, DOM interaction. Use `--headless` for unattended Loom runs. |
+| [Mobile MCP](https://github.com/mobile-next/mobile-mcp) | `claude mcp add mobile -- npx -y @mobilenext/mobile-mcp@latest` | `mobile` | iOS Simulator + Android Emulator screenshots, tap, swipe, app management. Requires a running simulator/emulator. |
+| [Figma](https://developers.figma.com/docs/figma-mcp-server/) | `claude mcp add --transport http figma https://mcp.figma.com/mcp` | `design` | Full Figma integration (Code Connect, design system rules, bidirectional). Requires interactive OAuth on first use — better for interactive sessions than unattended Loom runs. |
+
+To scope an MCP server to a single project, add it to your project's `.mcp.json` instead of global config. Loom copies `.mcp.json` into worktrees automatically.
+
+### Capability auto-detection
+
+Loom automatically detects MCP capabilities at startup by scanning `.mcp.json`. Known server names map to capability categories:
+
+| Server names | Capability |
+|-------------|-----------|
+| `playwright`, `chrome`, `puppeteer`, `browserbase` | `browser` |
+| `mobile`, `mobile-mcp`, `appium` | `mobile` |
+| `figma` | `design` |
+
+Servers not in this list are exposed by their own name as a capability (e.g., a server named `supabase` becomes the `supabase` capability).
+
+The resolved capabilities are exported as `LOOM_CAPABILITIES` and displayed in the tmux header. During story selection, Loom checks each story's `tools` array against the available capabilities — stories requiring missing capabilities stay `pending` and are skipped. The `/prd` generator auto-detects `tools` from acceptance criteria keywords (e.g., "screenshot" → `["browser"]`, "simulator" → `["mobile"]`, "design tokens" → `["design"]`).
+
+## Setup guides
+
+Step-by-step guides for common scenarios — written as agent-executable instructions. Setup guides live in this repo and are fetched on demand. Use `/loom setup` to have an agent fetch and execute any guide for your project:
+
+```bash
+/loom setup playwright
+/loom setup mobile testing
+/loom setup github issues
+/loom setup how do I run loom on a large feature
+```
+
+Or browse all [setup guides](setup/) directly.
+
+**Usage patterns:**
+
+| Guide | When to use |
+|-------|-------------|
+| [Large Feature](setup/large-feature.md) | Build a multi-story feature from specs using PRD mode |
+| [Quick Task](setup/quick-task.md) | Run a focused directive without PRD overhead |
+| [PRD Creation](setup/prd-creation.md) | Generate, review, and refine PRDs from spec files |
+| [GitHub Issues](setup/github-issues.md) | Implement GitHub issues — fetch, build, close |
+| [Linear Tickets](setup/linear-tickets.md) | Implement Linear tickets — fetch, build, update |
+| [External Sources](setup/external-sources.md) | Pull work from Slack, Notion, or Sentry |
+| [Testing](setup/testing.md) | Configure test suites for any language/framework |
+| [Worktrees & PRs](setup/worktrees-and-prs.md) | Control isolation, branching, and PR creation |
+
+**Validation:**
+
+| Guide | Capability | What it sets up |
+|-------|-----------|-----------------|
+| [Playwright](setup/validation/playwright.md) | `browser` | Browser testing, screenshots, DOM verification |
+| [Mobile MCP](setup/validation/mobile-mcp.md) | `mobile` | iOS Simulator & Android Emulator via MCP |
+| [agent-device](setup/validation/mobile-agent-device.md) | — | iOS & Android via CLI skill (token-efficient) |
+| [Figma](setup/validation/figma.md) | `design` | Design token extraction & visual fidelity |
+| [Custom MCP](setup/validation/custom-mcp.md) | any | Extend Loom with any MCP server |
+
+## Monitoring & control
 
 Loom launches in a tmux session with four panes:
 
 | Pane | Content |
-|------|---------|
+|------|-------|
 | Top (fixed) | Session header — PID, mode, config (always visible) |
 | Middle | Live Claude Code output |
 | Bottom-left | `status.md` (refreshes every 3s) |
@@ -241,6 +282,33 @@ touch .loom/.stop                        # graceful — finishes current iterati
 tmux kill-session -t loom-<project>      # immediate
 /loom stop                               # from Claude Code
 ```
+
+## Safety
+
+Loom enforces safety through Claude Code hooks and automatic circuit breakers — not just prompt instructions.
+
+### Hooks
+
+| Hook | Purpose |
+|------|-------|
+| `bash-guard.sh` | Blocks destructive commands (`rm -rf /`, `git push --force`, etc.) |
+| `block-interactive.sh` | Prevents `EnterPlanMode` and `AskUserQuestion` (no human present) |
+| `block-task-output.sh` | Prevents `TaskOutput` polling (results auto-deliver) |
+| `background-tasks.sh` | Forces all subagents to run in background |
+| `status-kill.sh` | Hard-kills the agent when `status.md` is written |
+| `stop-guard.sh` | Blocks exit until `status.md` has been updated |
+| `subagent-recall.sh` | Nudges subagents to check .docs, CLAUDE.md, and memory before starting |
+| `subagent-stop-guard.sh` | Validates subagent output and nudges to update docs + memory |
+
+### Circuit breakers
+
+Loom won't run forever. It stops when:
+
+- **All stories done** — emits `LOOM_RESULT:DONE`
+- **Consecutive failures** — 3 failures in a row trips the circuit breaker (configurable with `--max-failures`)
+- **Max iterations** — hard cap at 500 (configurable with `--max-iterations`)
+- **Graceful stop** — `touch .loom/.stop`
+- **Timeout** — per-iteration timeout kills stuck runs (configurable with `--timeout`)
 
 ## PRD format
 
@@ -310,7 +378,10 @@ Statuses: `pending` → `in_progress` → `done` | `blocked` | `cancelled`
 
 ```
 .claude/skills/
-├── loom/SKILL.md        # /loom skill
+├── loom/
+│   ├── SKILL.md          # /loom skill (router)
+│   ├── exec.md           # /loom — loop execution
+│   └── setup.md          # /loom setup — fetches and runs setup guides
 └── prd/SKILL.md          # /prd skill (PRD generator)
 
 .loom/
@@ -333,16 +404,6 @@ Statuses: `pending` → `in_progress` → `done` | `blocked` | `cancelled`
 │   └── subagent-stop-guard.sh
 └── logs/                 # Per-iteration logs + master.log
 ```
-
-## Circuit breakers
-
-Loom won't run forever. It stops when:
-
-- **All stories done** — emits `LOOM_RESULT:DONE`
-- **Consecutive failures** — 3 failures in a row trips the circuit breaker (configurable with `--max-failures`)
-- **Max iterations** — hard cap at 500 (configurable with `--max-iterations`)
-- **Graceful stop** — `touch .loom/.stop`
-- **Timeout** — per-iteration timeout kills stuck runs (configurable with `--timeout`)
 
 ## License
 
