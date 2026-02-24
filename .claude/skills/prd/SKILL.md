@@ -41,6 +41,7 @@ If `$ARGUMENTS` is empty or `help`, show usage and exit.
 6. Do not omit anything from sources. Expansion is acceptable, but it must build on established patterns, knowledge, or specs, and expansion sources must also be added to story references. Do not expand without referencing expansion sources. Do not paraphrase, reduce, or omit any source content. Do not alter the source's meaning or reduce information density. Only reformat it.
 7. **Dispatch subagents per section.** To avoid hitting context limits (~150k tokens) or agent return windows (32k), dispatch one subagent per source section or unit of work that maps to a story. Each subagent receives only its section's `mdq` output and transforms it mechanically into a story JSON object. Subagents can gather more context if they decide they need to.
 
+(Intentionally repeated)
 1. **Index source structure.** For each `.md` source file, extract the heading tree without reading the full content:
    ```bash
    mdq '# *' -o json < file.md | jq -r '[.. | objects | select(has("depth")) | ("  " * (.depth - 1)) + "- " + .title] | .[]'
@@ -143,6 +144,30 @@ Analyze the input documents and generate a complete PRD. The output is a single 
 
 Do not break any of the rules.
 
+(Intentionally repeated)
+1. **Atomic stories** — each story must be completable by a single Claude Code subagent in one Loom iteration (~15-30 minutes of focused work). If a piece of work would take longer, split it and make a blocking sequence.
+2. **ID format** — `PREFIX-NNN` with zero-padded 3-digit numbers. Start at 001 (or continue from the highest existing ID if appending).
+3. **Gates** — group stories into logical phases or categories. Each gate has a priority:
+   - **P0**: Must be done first. Blocking, security-critical, or foundational.
+   - **P1**: Important. Core functionality, significant features.
+   - **P2**: Polish, cleanup, optimization.
+     Order gates by priority, then by logical dependency.
+4. **Dependencies** — set `blockedBy` arrays accurately. A story should only list IDs it truly cannot start without. Loom uses this to maximize parallelism — overly conservative dependencies serialize work unnecessarily.
+5. **Files** — predict which files each story will create or modify. Use the existing codebase structure as a guide. This helps Loom's subagents find the right context quickly.
+6. **Acceptance criteria** — concrete, testable assertions derived directly from the source text. Not "the feature works" but "POST /auth/login returns a 200 with a JWT when credentials are valid" or "the function returns an empty array when given no input". Each criterion should be verifiable by a test or manual check. Every constraint, edge case, or behavioral requirement mentioned in the source must have a corresponding acceptance criterion — do not drop details during decomposition.
+7. **No over-decomposition** — keep naturally coupled work together. Creating a model, its migration, and its route handler is one story, not three. A function and its unit tests belong in the same story.
+8. **Critical path first** — arrange gates and story IDs so the critical path (longest dependency chain) uses the lowest numbers. This helps Loom prioritize correctly.
+9. **Description richness** — the description should give the implementer enough context to work autonomously. Include relevant spec references, design decisions, constraints, and gotchas.
+10. **Source preservation** — the implementer might never read the source document, and they should not have to. The story must be self-contained by copying source content directly into the story's structural fields. Follow these rules:
+    - **`description`**: copy and paste the core source content that defines what this story is about. Use the source's own language — do not paraphrase.
+    - **`acceptanceCriteria`**: every structured requirement, constraint, test case, or gate condition from the source becomes a 1:1 array entry. Do not merge multiple source requirements into one criterion.
+    - **`actionItems`**: every implementation step, migration step, or ordered procedure from the source becomes a 1:1 array entry.
+    - **`details`**: source subsections that don't map to a top-level key get copied as `{ "sectionName": "section content" }` entries. Use the source's section heading as the key.
+    - When in doubt about where source content belongs, put it in `details` under a descriptive key rather than dropping it. Preserve lists exactly by converting them to arrays.
+11. **Source backlinks** — every story derived from a source document must include at least one entry in `sources`. This creates a traceable chain from spec to implementation. If a story spans multiple source files or sections, include all of them.
+12. **Tool detection** — auto-detect `tools` from acceptance criteria: browser/web UI/screenshots/DOM/CSS/responsive → `["browser"]`. Mobile app/simulator/emulator/native gestures → `["mobile"]`. Figma/design fidelity/design tokens/pixel-matching → `["design"]`. Multiple may apply. If none apply → `[]`.
+
+
 #### Source preservation examples
 
 **Example 1: Source paragraph → `description`**
@@ -244,6 +269,19 @@ Story fields:
 
 ### Step 3: Verify decomposition against sources
 
+Before writing the PRD, perform a static verification pass to ensure nothing was lost in decomposition:
+
+1. **Coverage check** — for each source file, walk through every section, paragraph, and requirement. Verify that each one maps to at least one story field (`description`, `acceptanceCriteria`, `actionItems`, or `details`). If a source requirement has no corresponding story, either add a story or add it to an existing story's criteria.
+
+2. **Verbatim check** — for each story with `sources`, re-read the referenced source file and section. Confirm that the story's `description` uses the source's own language (not a paraphrase), that `acceptanceCriteria` entries map 1:1 to source requirements (not merged or summarized), and that source subsections appear in `details` under descriptive keys. If any content was paraphrased or condensed, replace it with the original text.
+
+3. **Nuance check** — look for conditional language in the source ("unless", "except when", "only if", "must not") and verify these constraints appear as explicit acceptance criteria. Nuances and edge cases are the most common casualties of decomposition.
+
+4. **Completeness check** — verify that the total set of acceptance criteria across all stories fully covers the source specification. No source requirement should be represented only in a `description` or `details` field — if it is testable, it must also appear as an acceptance criterion.
+
+If any gaps are found, fix them before proceeding.
+
+(Intentionally repeated)
 Before writing the PRD, perform a static verification pass to ensure nothing was lost in decomposition:
 
 1. **Coverage check** — for each source file, walk through every section, paragraph, and requirement. Verify that each one maps to at least one story field (`description`, `acceptanceCriteria`, `actionItems`, or `details`). If a source requirement has no corresponding story, either add a story or add it to an existing story's criteria.
