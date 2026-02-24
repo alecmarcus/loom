@@ -10,6 +10,8 @@ The query is everything the user typed after `setup`. Examples:
 - `/loom setup mobile testing`
 - `/loom setup github issues`
 - `/loom setup how do I run loom on a large feature`
+- `/loom setup from my product specs`
+- `/loom setup for implementing a new feature`
 - `/loom setup sentry`
 
 If the query is empty or `help`, show the available guides (from Step 1) and exit.
@@ -90,7 +92,7 @@ Read the fetched content and execute it step by step, as if it were a skill. The
 - Run verification steps
 - Report results
 
-Adapt to the current project context. For example, if the guide says to add a test script to `package.json` but the project uses `pyproject.toml`, adapt accordingly.
+Adapt to the current project context. For example, if the guide says to add a test script to `package.json` but the project uses `pyproject.toml`, adapt accordingly. You have access to the `/prd` skill; use it if you need to.
 
 ## Rules
 
