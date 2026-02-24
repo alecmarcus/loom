@@ -381,7 +381,9 @@ Statuses: `pending` → `in_progress` → `done` | `blocked` | `cancelled`
 │   ├── SKILL.md          # /loom skill (router)
 │   ├── exec.md           # /loom — loop execution
 │   └── setup.md          # /loom setup — fetches and runs setup guides
-└── prd/SKILL.md          # /prd skill (PRD generator)
+└── prd/
+    ├── SKILL.md          # /prd skill (router)
+    └── exec.md           # /prd — PRD generation
 
 .loom/
 ├── start.sh              # Main loop controller
