@@ -87,19 +87,17 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 fi
 
 # ─── Check for existing installation ────────────────────────────
+UPDATING=false
 if [ -d "$TARGET_DIR/.loom" ]; then
-  echo -e "${YELLOW}Loom is already installed in $TARGET_DIR${NC}"
-  echo -e "  Overwrite? This will reset prd.json and status.md."
-  read -r -p "  Continue? [y/N] " REPLY
-  if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
-  fi
-  echo ""
+  UPDATING=true
 fi
 
 # ─── Copy Loom files ───────────────────────────────────────────
-echo -e "${CYAN}Installing Loom...${NC}"
+if $UPDATING; then
+  echo -e "${CYAN}Updating Loom...${NC}"
+else
+  echo -e "${CYAN}Installing Loom...${NC}"
+fi
 
 # Core directory
 mkdir -p "$TARGET_DIR/.loom/hooks"
@@ -119,13 +117,17 @@ for hook in "$LOOM_SOURCE/hooks/"*.sh; do
   [ -f "$hook" ] && cp "$hook" "$TARGET_DIR/.loom/hooks/"
 done
 
-# Copy template files (don't overwrite existing project files)
-if [ ! -f "$TARGET_DIR/.loom/prd.json" ] || [ -s "$TARGET_DIR/.loom/prd.json" ] && grep -q "EXAMPLE-001" "$TARGET_DIR/.loom/prd.json" 2>/dev/null; then
+# Copy template files only if they don't exist yet
+if [ ! -f "$TARGET_DIR/.loom/prd.json" ]; then
   cp "$LOOM_SOURCE/prd.json" "$TARGET_DIR/.loom/prd.json"
+else
+  echo -e "  ${DIM}Skipped prd.json (already exists)${NC}"
 fi
 
-if [ ! -f "$TARGET_DIR/.loom/status.md" ] || grep -q "No iterations run yet" "$TARGET_DIR/.loom/status.md" 2>/dev/null; then
+if [ ! -f "$TARGET_DIR/.loom/status.md" ]; then
   cp "$LOOM_SOURCE/status.md" "$TARGET_DIR/.loom/status.md"
+else
+  echo -e "  ${DIM}Skipped status.md (already exists)${NC}"
 fi
 
 # Make scripts executable
@@ -353,7 +355,11 @@ fi
 
 # ─── Done ────────────────────────────────────────────────────────
 echo ""
-echo -e "${GREEN}${BOLD}Loom installed successfully!${NC}"
+if $UPDATING; then
+  echo -e "${GREEN}${BOLD}Loom updated successfully!${NC}"
+else
+  echo -e "${GREEN}${BOLD}Loom installed successfully!${NC}"
+fi
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo ""
