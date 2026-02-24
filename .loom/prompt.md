@@ -49,6 +49,15 @@ jq '[.stories[] | select(.status != "done" and .status != "cancelled")] | .[10:2
 
 Continue until you have identified all actionable stories or have a sufficient parallel batch.
 
+### Capability gating
+
+The `LOOM_CAPABILITIES` environment variable contains available capability categories (comma-separated, e.g. `browser,mobile,design`). When selecting stories:
+
+- If a story has a non-empty `tools` array, check that every entry is present in `LOOM_CAPABILITIES`.
+- If any required capability is missing, **skip** that story — leave it `pending` (not `blocked`).
+- If all remaining actionable stories are tool-gated (require capabilities not in `LOOM_CAPABILITIES`), emit `LOOM_RESULT:DONE`.
+- Stories without a `tools` field or with `"tools": []` are always eligible.
+
 ### Combine with failing-test fixes
 
 If Step 1b found failing tests, include a fix for each failure alongside the PRD stories. Failing-test fixes take scheduling priority.
@@ -67,6 +76,7 @@ Each subagent prompt **must** include:
 4. A reminder to **search the codebase before assuming something is missing** — don't reimplement what already exists.
 5. A reminder to **only implement the assigned story** — do not "fix" existing code that seems inconsistent with other specs.
 6. If the story has `sources` entries, a reminder that **the source documents are the source of truth** — the subagent should read the referenced source file and section, and if the story's fields conflict with or omit details from the source, follow the source.
+7. If the story has a non-empty `tools` array, tell the subagent which capabilities are available and instruct them to: **write test files** for visual/interaction acceptance criteria using the project's test framework (Playwright tests, Detox/Maestro tests, etc.) as durable verification, and **use MCP tools ad-hoc** during implementation to screenshot, inspect, and debug visual changes before committing. Don't hardcode specific MCP API calls — let the subagent discover available tools via `ListMcpResourcesTool`.
 
 Do **not** combine multiple stories into a single subagent.
 
@@ -134,6 +144,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 | **Uncommitted Changes**   | If tests failed and changes were not committed, list what's uncommitted and why. |
 | **Fixed This Iteration**  | Any previously-failing tests that now pass.                                      |
 | **Tests Added / Updated** | List of new or modified test files.                                              |
+| **Tool-Gated Stories**    | Stories skipped because required capabilities aren't available (story ID, missing capability). |
 | **Subagent Outcomes**     | For each subagent: story ID, pass/fail, brief summary.                           |
 
 ---

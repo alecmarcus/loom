@@ -33,6 +33,15 @@ Read `.loom/status.md`. Note any failing tests or uncommitted changes from a pre
 
 Use subagents (Task tool) to parallelize independent pieces of work where possible. Assign one distinct unit of work per subagent. Always **search the codebase before assuming something is missing** — don't reimplement what already exists.
 
+### Visual verification
+
+If the `LOOM_CAPABILITIES` environment variable is non-empty (e.g. `browser`, `mobile`, `design`), MCP tools are available for visual verification. When the directive involves UI, visual, or interaction work:
+
+- **Write test files** for visual/interaction requirements using the project's test framework as durable verification.
+- **Use MCP tools ad-hoc** during implementation to screenshot, inspect, and debug visual changes before committing.
+
+This is never gating — proceed with or without MCP tools. They are a bonus for higher-fidelity verification.
+
 ---
 
 ## Step 3: Post-Execution

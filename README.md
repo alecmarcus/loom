@@ -84,12 +84,11 @@ Safety is enforced by Claude Code hooks — not just prompt instructions:
 
 Loom subagents can use any MCP tools configured in the project. These are useful for stories with visual, browser, or mobile acceptance criteria.
 
-| MCP | Install | What it provides |
-|-----|---------|------------------|
-| [Playwright](https://github.com/microsoft/playwright-mcp) | `claude mcp add playwright -- npx @playwright/mcp@latest --headless` | Browser automation, screenshots, DOM interaction. Use `--headless` for unattended Loom runs. |
-| [Mobile MCP](https://github.com/mobile-next/mobile-mcp) | `claude mcp add mobile -- npx -y @mobilenext/mobile-mcp@latest` | iOS Simulator + Android Emulator screenshots, tap, swipe, app management. Requires a running simulator/emulator. |
-| [Figma](https://github.com/GLips/Figma-Context-MCP) | `claude mcp add figma -- npx -y figma-developer-mcp --figma-api-key=TOKEN --stdio` | Fetch design data and screenshots from Figma files. Uses a Personal Access Token (no interactive OAuth), so it works unattended. |
-| [Official Figma](https://developers.figma.com/docs/figma-mcp-server/) | `claude mcp add --transport http figma https://mcp.figma.com/mcp` | Full Figma integration (Code Connect, design system rules, bidirectional). Requires interactive OAuth on first use — better for interactive sessions than unattended Loom runs. |
+| MCP | Install | Capability | What it provides |
+|-----|---------|------------|------------------|
+| [Playwright](https://github.com/microsoft/playwright-mcp) | `claude mcp add playwright -- npx @playwright/mcp@latest --headless` | `browser` | Browser automation, screenshots, DOM interaction. Use `--headless` for unattended Loom runs. |
+| [Mobile MCP](https://github.com/mobile-next/mobile-mcp) | `claude mcp add mobile -- npx -y @mobilenext/mobile-mcp@latest` | `mobile` | iOS Simulator + Android Emulator screenshots, tap, swipe, app management. Requires a running simulator/emulator. |
+| [Figma](https://developers.figma.com/docs/figma-mcp-server/) | `claude mcp add --transport http figma https://mcp.figma.com/mcp` | `design` | Full Figma integration (Code Connect, design system rules, bidirectional). Requires interactive OAuth on first use — better for interactive sessions than unattended Loom runs. |
 
 To scope an MCP server to a single project, add it to your project's `.mcp.json` instead of global config. Loom copies `.mcp.json` into worktrees automatically.
 
@@ -286,17 +285,19 @@ tmux kill-session -t loom-<project>      # immediate
         "Add signup route with input validation"
       ],
       "blockedBy": [],
+      "tools": [],
       "details": {}
     }
   ]
 }
 ```
 
-**Required fields** on every story: `id`, `title`, `gate`, `priority`, `severity`, `status`, `files`, `description`, `acceptanceCriteria`, `actionItems`, `blockedBy`, `details`.
+**Required fields** on every story: `id`, `title`, `gate`, `priority`, `severity`, `status`, `files`, `description`, `acceptanceCriteria`, `actionItems`, `blockedBy`, `tools`, `details`.
 
 - `severity`: `"critical"` | `"major"` | `"minor"`
 - `actionItems`: concrete implementation steps (what to do)
 - `acceptanceCriteria`: concrete verification steps (what to check)
+- `tools`: array of capability categories the story requires (`"browser"`, `"mobile"`, `"design"`). Defaults to `[]`. Stories with tool requirements are skipped when the required MCP servers aren't installed. Auto-detected from acceptance criteria by `/prd`.
 - `details`: object for arbitrary project-specific metadata (always present, `{}` when empty)
 
 Loom uses `jq` to read stories in waves of 10 (never loading the full file), selects stories whose `blockedBy` dependencies are resolved, and dispatches them as parallel subagents.
