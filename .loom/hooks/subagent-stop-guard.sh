@@ -28,19 +28,30 @@ fi
 # Nudge subagents to maintain .docs artifacts alongside code changes.
 # This is advisory (block + continue), not a hard gate.
 
-DOCS_REMINDER=""
+NUDGES=""
 
 # Check if the subagent touched code but didn't mention .docs updates
 if echo "$MESSAGE" | grep -qiE '(created|added|implemented|built|wrote)' && \
    ! echo "$MESSAGE" | grep -qiE '(\.docs|CLAUDE\.md|documentation|ADR|adr|lessons)'; then
-  DOCS_REMINDER="Documentation reminder: If your changes introduce new patterns, architectural decisions, or lessons learned, update the relevant .docs/ artifacts and/or CLAUDE.md:
+  NUDGES="Documentation reminder: If your changes introduce new patterns, architectural decisions, or lessons learned, update the relevant .docs/ artifacts and/or CLAUDE.md:
   - Root .docs/ and CLAUDE.md for project-wide knowledge (ADRs, specs, lessons, architecture)
   - Feature-scoped .docs/ and CLAUDE.md (e.g. src/auth/.docs/) for feature-specific design notes, API decisions, and internal conventions
   Create feature-scoped .docs/ directories when a feature area has design context worth preserving close to the code."
 fi
 
-if [ -n "$DOCS_REMINDER" ]; then
-  jq -n --arg reason "$DOCS_REMINDER" '{
+# Check if the subagent discovered patterns/gotchas but didn't mention Vestige
+if echo "$MESSAGE" | grep -qiE '(pattern|gotcha|workaround|discovered|learned|tricky|edge case|caveat)' && \
+   ! echo "$MESSAGE" | grep -qiE '(vestige|mcp__vestige|smart_ingest|remember_pattern|remember_decision|memory)'; then
+  NUDGES="${NUDGES:+$NUDGES
+
+}Memory reminder: If you discovered patterns, gotchas, or architectural decisions worth preserving, store them in Vestige so future iterations can benefit:
+  - Code patterns: mcp__vestige__codebase(action: \"remember_pattern\", ...)
+  - Architectural decisions: mcp__vestige__codebase(action: \"remember_decision\", ...)
+  - Gotchas/warnings: mcp__vestige__smart_ingest(content: \"...\", tags: [\"<project>\", \"gotcha\"])"
+fi
+
+if [ -n "$NUDGES" ]; then
+  jq -n --arg reason "$NUDGES" '{
     decision: "block",
     reason: $reason
   }'
