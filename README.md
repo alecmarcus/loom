@@ -2,38 +2,37 @@
 
 Loom is a Ralph Wiggum style autonomous development loop for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) that is optimized for multi-threaded work with subagents.
 
-Loom runs Claude Code in a continuous loop, reading tasks from a PRD (or ad-hoc directives), dispatching parallel subagents, running tests, committing passing code, and repeating — all inside a tmux session you can monitor.
+Loom runs Claude Code in a continuous loop, reading tasks from a source(s) of your choosing, dispatching parallel subagents, testing & validating, committing passing code, and repeating — all inside a tmux session you can monitor.
 
-You can loom from inside Claude Code, or with the bash script.
+You can loom from inside Claude Code with the `/loom` skill, or directly via the bash script.
 
 ## Quick start
 
 1. Install
-  ```bash
-  # Install into your project
-  cd your-project
-  curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
-  ```
+   ```bash
+   cd your-project
+   curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
+   ```
 
-2. (Optional) Have Claude generate a PRD with `/prd` from your specs. Pass any number of files of any format.
-  ```bash
-  # Use the slash command from inside Claude Code
-  /prd spec.md design.md arch.md
-  ```
+2. Loom
+   ```bash
+   # Give it a task
+   /loom Refactor all callbacks to async/await
 
-3. Start the loom
-  ```sh
-  # Both the slash command and bash script default to work through the PRD until done
-  /loom
+   # Work from a GitHub issue
+   /loom github 42
 
-  # You can skip the PRD and give it a task directly
-  /loom Refactor all callbacks to async/await
+   # Work from a Linear ticket
+   /loom linear TEAM-42
 
-  # Or pass queries to MCPs
-  /loom github 42
-  /loom linear TEAM-42
-  /loom slack https://team.slack.com/archives/...
-  ```
+   # Build a feature from specs
+   /prd spec.md design.md
+   /loom
+
+   # Set up a loop, or a specific integration
+   /loom setup a prd for the first three phases of the project
+   /loom setup playwright
+   ```
 
 ## How it works
 
