@@ -77,7 +77,7 @@ Each subagent prompt **must** include:
 5. A reminder to **only implement the assigned story** — do not "fix" existing code that seems inconsistent with other specs.
 6. If the story has `sources` entries, a reminder that **the source documents are the source of truth** — the subagent should read the referenced source file and section, and if the story's fields conflict with or omit details from the source, follow the source.
 7. If the story has a non-empty `tools` array, tell the subagent which capabilities are available and instruct them to: **write test files** for visual/interaction acceptance criteria using the project's test framework (Playwright tests, Detox/Maestro tests, etc.) as durable verification, and **use MCP tools ad-hoc** during implementation to screenshot, inspect, and debug visual changes before committing. Don't hardcode specific MCP API calls — let the subagent discover available tools via `ListMcpResourcesTool`.
-8. A reminder to **create or update feature-scoped documentation** — if the story adds or changes a feature area, the subagent should create or update a `.docs/` directory and/or `CLAUDE.md` in the relevant directory with usage notes, constraints, and gotchas that aren't obvious from code alone. Skip for trivial changes.
+8. A reminder to **update documentation** — if the story changes project-wide patterns, APIs, or conventions, update root `.docs/` and/or `CLAUDE.md`. If it adds or changes a feature area, create or update a `.docs/` directory and/or `CLAUDE.md` in the relevant feature directory with usage notes, constraints, and gotchas that aren't obvious from code alone. Skip for trivial changes.
 
 Do **not** combine multiple stories into a single subagent.
 
