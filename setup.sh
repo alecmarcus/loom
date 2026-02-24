@@ -292,9 +292,10 @@ echo -e "  ${GREEN}✓${NC} Configured Claude Code hooks"
 
 # ─── Update CLAUDE.md ───────────────────────────────────────────
 CLAUDEMD="$TARGET_DIR/CLAUDE.md"
-LOOM_SECTION_MARKER="<!-- loom:begin -->"
+LOOM_BEGIN="<!-- loom:begin -->"
+LOOM_END="<!-- loom:end -->"
 
-LOOM_SECTION="$LOOM_SECTION_MARKER
+LOOM_SECTION="$LOOM_BEGIN
 ## Loom — Autonomous Development Loop
 
 Loom runs Claude Code in a continuous loop: read tasks from a PRD, dispatch parallel subagents, run tests, commit green code, repeat.
@@ -323,13 +324,12 @@ Loom runs Claude Code in a continuous loop: read tasks from a PRD, dispatch para
 
 **Search before building.** Subagents must search the codebase before assuming something is missing. Reimplementing existing code is a common failure mode.
 
-**Scope is sacred.** Implement only the assigned story. Do not \"fix\" adjacent code, add unrequested features, or refactor code that seems inconsistent with other specs."
+**Scope is sacred.** Implement only the assigned story. Do not \"fix\" adjacent code, add unrequested features, or refactor code that seems inconsistent with other specs.
+$LOOM_END"
 
 if [ -f "$CLAUDEMD" ]; then
-  if grep -qF "$LOOM_SECTION_MARKER" "$CLAUDEMD" 2>/dev/null; then
-    # Replace existing Loom section
-    # Write replacement to a temp file so awk can read it (macOS awk
-    # can't handle multi-line strings via -v)
+  if grep -qF "$LOOM_BEGIN" "$CLAUDEMD" 2>/dev/null; then
+    # Replace existing Loom section (between begin and end markers)
     tmpfile="${CLAUDEMD}.tmp"
     replfile="${CLAUDEMD}.repl"
     printf '%s\n' "$LOOM_SECTION" > "$replfile"
@@ -340,6 +340,7 @@ if [ -f "$CLAUDEMD" ]; then
         skip = 1
         next
       }
+      /<!-- loom:end -->/ { skip = 0; next }
       skip == 0 { print }
     ' "$CLAUDEMD" > "$tmpfile" && mv "$tmpfile" "$CLAUDEMD"
     rm -f "$replfile" "$tmpfile"
