@@ -1096,18 +1096,14 @@ DRYEOF
   ITER_END=$(date +%s)
   ITER_DURATION=$((ITER_END - ITER_START))
 
-  # ─── Count subagent dispatches + detect orphans ──
+  # ─── Count subagent dispatches ──
+  # NOTE: completion tracking (tool_result events) is in the sidecar
+  # filter but the CLI event shape is unvalidated — completions may
+  # not match. Dispatch count is reliable; orphan detection is deferred
+  # until the tool_result schema is confirmed empirically.
   SUBAGENT_COUNT=0
-  SUBAGENT_ORPHANED=0
   if [ -f "$SUBAGENT_LOG" ] && [ -s "$SUBAGENT_LOG" ]; then
     SUBAGENT_COUNT=$(jq -s '[.[] | select(.event == "dispatch")] | length' "$SUBAGENT_LOG" 2>/dev/null || echo 0)
-    SUBAGENT_ORPHANED=$(jq -s '
-      ([.[] | select(.event == "dispatch") | .tool_use_id]) -
-      ([.[] | select(.event == "complete") | .tool_use_id]) | length
-    ' "$SUBAGENT_LOG" 2>/dev/null || echo 0)
-    if [ "$SUBAGENT_ORPHANED" -gt 0 ]; then
-      log "${YELLOW}$SUBAGENT_ORPHANED of $SUBAGENT_COUNT subagents did not complete${NC}"
-    fi
   fi
 
   # ─── Parse result signal from iteration output ──
