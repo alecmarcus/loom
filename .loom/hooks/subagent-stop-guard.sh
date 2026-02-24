@@ -24,14 +24,27 @@ if [ -z "$MESSAGE" ] || [ ${#MESSAGE} -lt 10 ]; then
   exit 0
 fi
 
-# Nudge: remind about feature-scoped documentation.
-# This is non-blocking — stderr is informational.
-if ! echo "$MESSAGE" | grep -qiE '\.docs|CLAUDE\.md'; then
-  cat >&2 <<'MSG'
-Reminder: if this subagent added or changed a feature area, consider creating
-or updating feature-scoped documentation (.docs/ directory and/or CLAUDE.md)
-in the relevant directory with usage notes, constraints, and gotchas.
-MSG
+# ─── Check: documentation updated ──────────────────────────────
+# Nudge subagents to maintain .docs artifacts alongside code changes.
+# This is advisory (block + continue), not a hard gate.
+
+DOCS_REMINDER=""
+
+# Check if the subagent touched code but didn't mention .docs updates
+if echo "$MESSAGE" | grep -qiE '(created|added|implemented|built|wrote)' && \
+   ! echo "$MESSAGE" | grep -qiE '(\.docs|CLAUDE\.md|documentation|ADR|adr|lessons)'; then
+  DOCS_REMINDER="Documentation reminder: If your changes introduce new patterns, architectural decisions, or lessons learned, update the relevant .docs/ artifacts and/or CLAUDE.md:
+  - Root .docs/ and CLAUDE.md for project-wide knowledge (ADRs, specs, lessons, architecture)
+  - Feature-scoped .docs/ and CLAUDE.md (e.g. src/auth/.docs/) for feature-specific design notes, API decisions, and internal conventions
+  Create feature-scoped .docs/ directories when a feature area has design context worth preserving close to the code."
+fi
+
+if [ -n "$DOCS_REMINDER" ]; then
+  jq -n --arg reason "$DOCS_REMINDER" '{
+    decision: "block",
+    reason: $reason
+  }'
+  exit 0
 fi
 
 exit 0
