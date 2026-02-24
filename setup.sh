@@ -260,7 +260,22 @@ if [ -f "$SETTINGS_FILE" ]; then
   # Check if hooks already exist
   if echo "$EXISTING" | jq -e '.hooks' &>/dev/null; then
     echo -e "  ${YELLOW}!${NC} Hooks already configured in settings.json — merging"
-    MERGED=$(echo "$EXISTING" | jq --argjson new "$HOOKS_JSON" '.hooks = ($new.hooks * .hooks)')
+    # Per-event-key merge: for each event, strip old .loom/hooks/ entries
+    # and replace with new ones, preserving any user-added hooks.
+    MERGED=$(echo "$EXISTING" | jq --argjson new "$HOOKS_JSON" '
+      .hooks as $old |
+      .hooks = ($old | to_entries | map(
+        .key as $k |
+        if ($new.hooks | has($k)) then
+          # Strip old Loom hooks, append new Loom hooks
+          .value = ([.value[] | select(
+            (.hooks // [] | all(.command // "" | startswith(".loom/hooks/") | not))
+          )] + $new.hooks[$k])
+        else . end
+      ) | from_entries) |
+      # Add event keys that only exist in the new config
+      .hooks += ($new.hooks | to_entries | map(select(.key as $k | $old | has($k) | not)) | from_entries)
+    ')
     echo "$MERGED" | jq '.' > "$SETTINGS_FILE"
   else
     MERGED=$(echo "$EXISTING" | jq --argjson new "$HOOKS_JSON" '. + $new')
