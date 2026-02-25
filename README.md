@@ -9,7 +9,7 @@ Loom runs Claude Code in a continuous loop, reading tasks from a source(s) of yo
 1. Install the plugin
    ```bash
    /plugin marketplace add alecmarcus/claude-plugins
-   /plugin install loom@alec-plugins
+   /plugin install loom@alecmarcus
    ```
 
 2. Initialize your project
@@ -76,7 +76,7 @@ Each iteration:
 
 ```bash
 /plugin marketplace add alecmarcus/claude-plugins
-/plugin install loom@alec-plugins
+/plugin install loom@alecmarcus
 ```
 
 Or install directly:
