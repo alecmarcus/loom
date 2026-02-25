@@ -91,33 +91,29 @@ Update:
 claude plugin update loom
 ```
 
-### Git clone
+### Local install
 
-If you prefer not to use the plugin marketplace:
+Self-contained, per-project install — no plugin system, everything lives in your repo:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
 ```
 
-The installer clones Loom to `~/.loom` and adds a shell alias so `claude` always loads it as a plugin. Restart your terminal after installing.
-
 **What it does:**
-- Clones the repo to `~/.loom` (customizable via `LOOM_INSTALL_DIR`)
-- Adds `alias claude='claude --plugin-dir ~/.loom'` to your shell RC file (`.zshrc`, `.bashrc`, or `config.fish`)
-- Re-running the script updates both the repo and the alias (idempotent)
+- Copies scripts, templates, and setup guides into `.loom/`
+- Installs skills as standalone commands in `.claude/skills/` (`/loom-start`, `/loom-stop`, etc.)
+- Configures hooks in `.claude/settings.json`
+- Creates `prd.json`, `status.md`, `.gitignore`, and a `CLAUDE.md` section
+- Re-running updates scripts and hooks without overwriting project files
 
-**Update:**
+**Differences from plugin install:**
+- Skills use `/loom-start` instead of `/loom:start` (colon namespace is plugin-only)
+- Everything is tracked in your repo — portable and self-contained
+- No external dependency on a plugin directory or marketplace
 
-```bash
-git -C ~/.loom pull
-```
+**Update:** Re-run the install script in your project directory.
 
-**Uninstall:**
-
-```bash
-rm -rf ~/.loom
-# Remove the "# loom plugin" line from your shell RC file
-```
+**Uninstall:** Remove `.loom/`, `.claude/skills/loom-*/`, and the hooks from `.claude/settings.json`.
 
 ### Initialize your project
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Loom Installer ─────────────────────────────────────────────
+# ─── Loom Local Installer ───────────────────────────────────────
 # curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
 #
-# Alternative to the plugin marketplace install. Clones the repo
-# and configures your shell so `claude` always loads Loom.
+# Installs Loom directly into the current project — scripts, hooks,
+# skills, and templates. Self-contained: no external dependencies,
+# no plugin system, everything tracked in your repo.
 # ─────────────────────────────────────────────────────────────────
 
-INSTALL_DIR="${LOOM_INSTALL_DIR:-$HOME/.loom}"
+TARGET_DIR="${1:-$(pwd)}"
+TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || { echo "Error: directory does not exist: $1" >&2; exit 1; }
 REPO_URL="https://github.com/alecmarcus/loom.git"
-SHELL_MARKER="# loom plugin"
-SHELL_LINE="alias claude='claude --plugin-dir $INSTALL_DIR' $SHELL_MARKER"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,6 +25,7 @@ die() { echo -e "${RED}Error: $1${NC}" >&2; exit 1; }
 
 echo ""
 echo -e "  ${BOLD}${CYAN}Loom Installer${NC}"
+echo -e "  ${DIM}Target: $TARGET_DIR${NC}"
 echo ""
 
 # ─── Check prerequisites ────────────────────────────────────────
@@ -35,9 +36,7 @@ command -v jq &>/dev/null     || MISSING+=("jq")
 
 if [ ${#MISSING[@]} -gt 0 ]; then
   echo -e "${RED}Missing required dependencies:${NC}"
-  for dep in "${MISSING[@]}"; do
-    echo -e "  - $dep"
-  done
+  for dep in "${MISSING[@]}"; do echo -e "  - $dep"; done
   echo ""
   command -v claude &>/dev/null || echo -e "  Install Claude Code: ${DIM}https://docs.anthropic.com/en/docs/claude-code/overview${NC}"
   command -v jq &>/dev/null     || echo -e "  Install jq: ${DIM}brew install jq${NC} or ${DIM}apt install jq${NC}"
@@ -50,85 +49,212 @@ if ! command -v tmux &>/dev/null; then
   echo ""
 fi
 
-# ─── Clone or update ────────────────────────────────────────────
-if [ -d "$INSTALL_DIR/.git" ]; then
-  echo -e "  ${DIM}Updating existing install...${NC}"
-  git -C "$INSTALL_DIR" pull --ff-only origin main 2>/dev/null || {
-    echo -e "  ${YELLOW}Pull failed — re-cloning...${NC}"
-    rm -rf "$INSTALL_DIR"
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+# ─── Clone source to temp dir ───────────────────────────────────
+TMPDIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMPDIR"; }
+trap cleanup EXIT
+
+echo -e "  ${DIM}Fetching Loom...${NC}"
+git clone --depth 1 "$REPO_URL" "$TMPDIR" 2>/dev/null
+echo -e "  ${GREEN}✓${NC} Fetched"
+
+SRC="$TMPDIR"
+
+# ─── Copy scripts ───────────────────────────────────────────────
+echo -e "  ${DIM}Installing scripts...${NC}"
+mkdir -p "$TARGET_DIR/.loom/scripts/hooks"
+
+cp "$SRC/scripts/start.sh"        "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/stop.sh"         "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/kill.sh"         "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/loom-status.sh"  "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/prd.sh"          "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/session-init.sh" "$TARGET_DIR/.loom/scripts/"
+cp "$SRC/scripts/hooks/"*.sh      "$TARGET_DIR/.loom/scripts/hooks/"
+
+chmod +x "$TARGET_DIR/.loom/scripts/"*.sh
+chmod +x "$TARGET_DIR/.loom/scripts/hooks/"*.sh
+
+echo -e "  ${GREEN}✓${NC} Scripts"
+
+# ─── Copy templates ─────────────────────────────────────────────
+mkdir -p "$TARGET_DIR/.loom/templates"
+cp "$SRC/templates/prompt.md"           "$TARGET_DIR/.loom/templates/"
+cp "$SRC/templates/directive.md"        "$TARGET_DIR/.loom/templates/"
+cp "$SRC/templates/claude-md-section.md" "$TARGET_DIR/.loom/templates/"
+
+echo -e "  ${GREEN}✓${NC} Templates"
+
+# ─── Copy setup guides ──────────────────────────────────────────
+if [ -d "$SRC/setup" ]; then
+  cp -r "$SRC/setup" "$TARGET_DIR/.loom/setup"
+  echo -e "  ${GREEN}✓${NC} Setup guides"
+fi
+
+# ─── Install skills ─────────────────────────────────────────────
+# Standalone skills (not plugin-namespaced): /loom-start, /loom-stop, etc.
+echo -e "  ${DIM}Installing skills...${NC}"
+
+SKILL_MAP=(
+  "start:loom-start"
+  "stop:loom-stop"
+  "kill:loom-kill"
+  "status:loom-status"
+  "preview:loom-preview"
+  "prd:loom-prd"
+  "setup:loom-setup"
+  "init:loom-init"
+)
+
+for mapping in "${SKILL_MAP[@]}"; do
+  src_name="${mapping%%:*}"
+  dest_name="${mapping#*:}"
+  src_file="$SRC/skills/$src_name/SKILL.md"
+  dest_dir="$TARGET_DIR/.claude/skills/$dest_name"
+
+  if [ -f "$src_file" ]; then
+    mkdir -p "$dest_dir"
+    # Copy and update the name field in frontmatter
+    sed "s/^name: $src_name$/name: $dest_name/" "$src_file" > "$dest_dir/SKILL.md"
+  fi
+done
+
+echo -e "  ${GREEN}✓${NC} Skills (as /loom-start, /loom-stop, etc.)"
+
+# ─── Configure hooks ────────────────────────────────────────────
+echo -e "  ${DIM}Configuring hooks...${NC}"
+SETTINGS_FILE="$TARGET_DIR/.claude/settings.json"
+
+HOOKS_JSON='{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": ".loom/scripts/session-init.sh" }]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/background-tasks.sh" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/bash-guard.sh" }]
+      },
+      {
+        "matcher": "EnterPlanMode",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/block-interactive.sh" }]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/block-interactive.sh" }]
+      },
+      {
+        "matcher": "TaskOutput",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/block-task-output.sh" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/status-kill.sh" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/stop-guard.sh" }]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/subagent-recall.sh" }]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{ "type": "command", "command": ".loom/scripts/hooks/subagent-stop-guard.sh" }]
+      }
+    ]
   }
-  echo -e "  ${GREEN}✓${NC} Updated"
-else
-  if [ -d "$INSTALL_DIR" ]; then
-    die "$INSTALL_DIR already exists but is not a git repo. Remove it or set LOOM_INSTALL_DIR."
-  fi
-  echo -e "  ${DIM}Cloning to $INSTALL_DIR...${NC}"
-  git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
-  echo -e "  ${GREEN}✓${NC} Cloned"
-fi
+}'
 
-# ─── Make scripts executable ────────────────────────────────────
-chmod +x "$INSTALL_DIR/scripts/"*.sh
-chmod +x "$INSTALL_DIR/scripts/hooks/"*.sh 2>/dev/null || true
-
-# ─── Configure shell ────────────────────────────────────────────
-# Detect RC file
-detect_rc() {
-  local shell_name
-  shell_name="$(basename "${SHELL:-/bin/bash}")"
-  case "$shell_name" in
-    zsh)  echo "$HOME/.zshrc" ;;
-    bash)
-      # macOS uses .bash_profile for login shells
-      if [ -f "$HOME/.bash_profile" ]; then
-        echo "$HOME/.bash_profile"
-      else
-        echo "$HOME/.bashrc"
-      fi
-      ;;
-    fish) echo "$HOME/.config/fish/config.fish" ;;
-    *)    echo "$HOME/.profile" ;;
-  esac
-}
-
-RC_FILE="$(detect_rc)"
-SHELL_NAME="$(basename "${SHELL:-/bin/bash}")"
-
-if [ "$SHELL_NAME" = "fish" ]; then
-  SHELL_LINE="alias claude 'claude --plugin-dir $INSTALL_DIR' $SHELL_MARKER"
-fi
-
-# Resolve symlinks so sed -i works on the real file
-RC_FILE_REAL="$(readlink -f "$RC_FILE" 2>/dev/null || readlink "$RC_FILE" 2>/dev/null || echo "$RC_FILE")"
-
-if grep -qF "$SHELL_MARKER" "$RC_FILE_REAL" 2>/dev/null; then
-  # Already configured — update in case install dir changed
-  if grep -qF "$SHELL_LINE" "$RC_FILE_REAL" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} Shell already configured"
+if [ -f "$SETTINGS_FILE" ]; then
+  EXISTING=$(cat "$SETTINGS_FILE")
+  if echo "$EXISTING" | jq -e '.hooks' &>/dev/null; then
+    # Merge: plugin hooks into existing hooks config
+    MERGED=$(echo "$EXISTING" | jq --argjson new "$HOOKS_JSON" '.hooks = ($new.hooks * .hooks)')
+    echo "$MERGED" | jq '.' > "$SETTINGS_FILE"
+    echo -e "  ${GREEN}✓${NC} Hooks merged into existing settings.json"
   else
-    # Replace existing loom line (use temp file for portability)
-    grep -vF "$SHELL_MARKER" "$RC_FILE_REAL" > "${RC_FILE_REAL}.loom-tmp"
-    printf '%s\n' "$SHELL_LINE" >> "${RC_FILE_REAL}.loom-tmp"
-    mv "${RC_FILE_REAL}.loom-tmp" "$RC_FILE_REAL"
-    echo -e "  ${GREEN}✓${NC} Updated shell config in $RC_FILE"
+    MERGED=$(echo "$EXISTING" | jq --argjson new "$HOOKS_JSON" '. + $new')
+    echo "$MERGED" | jq '.' > "$SETTINGS_FILE"
+    echo -e "  ${GREEN}✓${NC} Hooks added to settings.json"
   fi
 else
-  # Append
-  printf '\n%s\n' "$SHELL_LINE" >> "$RC_FILE_REAL"
-  echo -e "  ${GREEN}✓${NC} Added to $RC_FILE"
+  mkdir -p "$TARGET_DIR/.claude"
+  echo "$HOOKS_JSON" | jq '.' > "$SETTINGS_FILE"
+  echo -e "  ${GREEN}✓${NC} Created settings.json with hooks"
+fi
+
+# ─── Project files (don't overwrite existing) ───────────────────
+echo -e "  ${DIM}Setting up project files...${NC}"
+mkdir -p "$TARGET_DIR/.loom/logs"
+
+# .gitignore
+if [ ! -f "$TARGET_DIR/.loom/.gitignore" ]; then
+  cp "$SRC/templates/gitignore" "$TARGET_DIR/.loom/.gitignore"
+  echo -e "  ${GREEN}✓${NC} .loom/.gitignore"
+fi
+
+# prd.json
+if [ ! -f "$TARGET_DIR/.loom/prd.json" ]; then
+  cp "$SRC/templates/prd.json" "$TARGET_DIR/.loom/prd.json"
+  echo -e "  ${GREEN}✓${NC} .loom/prd.json (template)"
+fi
+
+# status.md
+if [ ! -f "$TARGET_DIR/.loom/status.md" ]; then
+  cp "$SRC/templates/status.md" "$TARGET_DIR/.loom/status.md"
+  echo -e "  ${GREEN}✓${NC} .loom/status.md"
+fi
+
+# .plugin_root — points to .loom/ itself for local installs.
+# The session-init.sh hook will overwrite this on each session start,
+# but we seed it here so skills work immediately.
+echo "$TARGET_DIR/.loom" > "$TARGET_DIR/.loom/.plugin_root"
+
+# ─── CLAUDE.md ──────────────────────────────────────────────────
+CLAUDEMD="$TARGET_DIR/CLAUDE.md"
+SECTION_MARKER="<!-- loom:begin -->"
+SECTION_CONTENT=$(cat "$SRC/templates/claude-md-section.md")
+
+if [ -f "$CLAUDEMD" ]; then
+  if grep -qF "$SECTION_MARKER" "$CLAUDEMD" 2>/dev/null; then
+    echo -e "  ${DIM}CLAUDE.md already has Loom section — skipping${NC}"
+  else
+    printf '\n%s\n' "$SECTION_CONTENT" >> "$CLAUDEMD"
+    echo -e "  ${GREEN}✓${NC} Appended Loom section to CLAUDE.md"
+  fi
+else
+  printf '%s\n' "$SECTION_CONTENT" > "$CLAUDEMD"
+  echo -e "  ${GREEN}✓${NC} Created CLAUDE.md with Loom section"
 fi
 
 # ─── Done ────────────────────────────────────────────────────────
 echo ""
 echo -e "  ${GREEN}${BOLD}Loom installed!${NC}"
 echo ""
-echo -e "  Restart your terminal, then in any project:"
+echo -e "  Installed to:        ${BOLD}$TARGET_DIR/.loom/${NC}"
+echo -e "  Skills:              ${BOLD}$TARGET_DIR/.claude/skills/loom-*${NC}"
+echo -e "  Hooks:               ${BOLD}$TARGET_DIR/.claude/settings.json${NC}"
 echo ""
-echo -e "    ${BOLD}claude${NC}          ${DIM}# loom is loaded automatically${NC}"
-echo -e "    ${BOLD}/loom:init${NC}      ${DIM}# first-time project setup${NC}"
-echo -e "    ${BOLD}/loom:start${NC}     ${DIM}# start the loop${NC}"
+echo -e "  ${CYAN}Note:${NC} Skills are standalone — use ${BOLD}/loom-start${NC}, ${BOLD}/loom-stop${NC}, etc."
+echo -e "  ${DIM}(Plugin install uses /loom:start, /loom:stop — colon namespace is plugin-only)${NC}"
 echo ""
-echo -e "  ${DIM}Update: re-run this script or git -C $INSTALL_DIR pull${NC}"
-echo -e "  ${DIM}Uninstall: rm -rf $INSTALL_DIR && remove the loom line from $RC_FILE${NC}"
+echo -e "  ${CYAN}Next steps:${NC}"
+echo -e "    1. ${BOLD}/loom-prd spec.md${NC}                  Generate a PRD"
+echo -e "    2. ${BOLD}/loom-start${NC}                        Start the loop"
+echo -e "    3. ${BOLD}/loom-start Fix all lint errors${NC}    Or give it a task"
+echo ""
+echo -e "  ${DIM}Update: re-run this script in the project directory${NC}"
 echo ""
