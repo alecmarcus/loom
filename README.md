@@ -72,7 +72,7 @@ Each iteration:
 - [mdq](https://github.com/yshavit/mdq) (markdown query tool, used by `/loom:prd` to extract sections from spec files)
 - [tmux](https://github.com/tmux/tmux/wiki) (recommended — provides split-pane monitoring)
 
-### Plugin install
+### Plugin marketplace (recommended)
 
 ```bash
 /plugin marketplace add alecmarcus/claude-plugins
@@ -85,19 +85,43 @@ Or install directly:
 claude plugin install loom
 ```
 
-Then initialize your project:
+Update:
+
+```bash
+claude plugin update loom
+```
+
+### Git clone
+
+If you prefer not to use the plugin marketplace:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
+```
+
+This clones Loom to `~/.loom`. Load it when starting Claude Code:
+
+```bash
+claude --plugin-dir ~/.loom
+```
+
+Or add a shell alias for permanent use:
+
+```bash
+echo 'alias claude-loom="claude --plugin-dir ~/.loom"' >> ~/.zshrc
+```
+
+Update with `git -C ~/.loom pull` or re-run the install script.
+
+### Initialize your project
+
+After installing via either method:
 
 ```bash
 /loom:init
 ```
 
 This creates the `.loom/` directory with template files and injects the Loom section into your `CLAUDE.md`.
-
-### Update
-
-```bash
-claude plugin update loom
-```
 
 ## Skills
 
