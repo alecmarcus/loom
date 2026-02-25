@@ -99,7 +99,25 @@ If you prefer not to use the plugin marketplace:
 curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/install.sh | bash
 ```
 
-This clones Loom to `~/.loom` and configures your shell so `claude` always loads it. Restart your terminal after installing. Update with `git -C ~/.loom pull` or re-run the script.
+The installer clones Loom to `~/.loom` and adds a shell alias so `claude` always loads it as a plugin. Restart your terminal after installing.
+
+**What it does:**
+- Clones the repo to `~/.loom` (customizable via `LOOM_INSTALL_DIR`)
+- Adds `alias claude='claude --plugin-dir ~/.loom'` to your shell RC file (`.zshrc`, `.bashrc`, or `config.fish`)
+- Re-running the script updates both the repo and the alias (idempotent)
+
+**Update:**
+
+```bash
+git -C ~/.loom pull
+```
+
+**Uninstall:**
+
+```bash
+rm -rf ~/.loom
+# Remove the "# loom plugin" line from your shell RC file
+```
 
 ### Initialize your project
 
