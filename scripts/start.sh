@@ -68,33 +68,57 @@ has_sources() {
 }
 
 generate_branch_slug() {
-  local context=""
-  if [ -n "$DIRECTIVE_FILE" ] && [ -f "$DIRECTIVE_FILE" ]; then
-    context="$(head -c 2000 "$DIRECTIVE_FILE")"
-  elif [ -n "$SOURCES_PROMPT" ]; then
+  # Build a short summary (not the full content) for slug generation
+  local summary=""
+  if [ -n "$PRD_PATH" ] && [ -f "$PRD_PATH" ]; then
+    summary="$(jq -r '.project + ": " + .description' "$PRD_PATH" 2>/dev/null)"
+  fi
+  if [ -n "$SOURCES_LINEAR" ]; then
+    summary="${summary:+$summary; }linear: $SOURCES_LINEAR"
+  fi
+  if [ -n "$SOURCES_GITHUB" ]; then
+    summary="${summary:+$summary; }github: $SOURCES_GITHUB"
+  fi
+  if [ -n "$SOURCES_SLACK" ]; then
+    summary="${summary:+$summary; }slack context"
+  fi
+  if [ -n "$SOURCES_NOTION" ]; then
+    summary="${summary:+$summary; }notion: $SOURCES_NOTION"
+  fi
+  if [ -n "$SOURCES_SENTRY" ]; then
+    summary="${summary:+$summary; }sentry: $SOURCES_SENTRY"
+  fi
+  if [ -z "$summary" ] && [ -n "$SOURCES_PROMPT" ]; then
     if [ -f "$SOURCES_PROMPT" ]; then
-      context="$(head -c 2000 "$SOURCES_PROMPT")"
+      summary="$(head -c 200 "$SOURCES_PROMPT")"
     else
-      context="$SOURCES_PROMPT"
+      summary="$(echo "$SOURCES_PROMPT" | head -c 200)"
     fi
-  elif [ -n "$PRD_PATH" ] && [ -f "$PRD_PATH" ]; then
-    context="$(jq -r '.project + ": " + .description' "$PRD_PATH" 2>/dev/null)"
+  fi
+  if [ -z "$summary" ] && [ -n "$DIRECTIVE_FILE" ] && [ -f "$DIRECTIVE_FILE" ]; then
+    summary="$(head -c 200 "$DIRECTIVE_FILE")"
   fi
 
   local prompt
-  if [ -n "$context" ]; then
-    prompt="Output ONLY a 3 word kebab-case git branch slug (lowercase, hyphens, no quotes, no explanation) summarizing this work:
-
-$context"
+  if [ -n "$summary" ]; then
+    prompt="three-word kebab-case git branch slug for: ${summary:0:200}"
   else
-    prompt="Output ONLY a 3 word creative kebab-case git branch slug (lowercase, hyphens, no quotes, no explanation). Pick evocative random words."
+    prompt="three-word kebab-case git branch slug, random evocative words"
   fi
 
-  local slug
-  slug=$(claude -p --model haiku "$prompt" 2>/dev/null | tr -d '[:space:]' | head -c 50)
+  local raw slug
+  raw=$(claude -p --model haiku "Output ONLY a slug like fix-auth-bug. No quotes, no explanation. $prompt" 2>/dev/null | head -1)
 
-  # Sanitize: lowercase, only alphanumeric and hyphens
-  slug=$(echo "$slug" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//')
+  # Try to extract a kebab-case slug (e.g., "fix-auth-bug") from the response
+  slug=$(echo "$raw" | grep -oE '[a-z][a-z0-9]*(-[a-z0-9]+)+' | head -1)
+
+  # Fallback: take first 3 words, sanitize to kebab-case
+  if [ -z "$slug" ]; then
+    slug=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]/ /g; s/  */ /g; s/^ //; s/ $//' | awk '{for(i=1;i<=3&&i<=NF;i++) printf "%s%s",$i,(i<3&&i<NF?"-":"")}')
+  fi
+
+  # Enforce max length
+  slug=$(echo "$slug" | head -c 40 | sed 's/-$//')
 
   # Ultimate fallback if claude call failed entirely
   [ -z "$slug" ] && slug="loom-$(date '+%Y%m%d-%H%M%S')"

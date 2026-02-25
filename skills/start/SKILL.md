@@ -16,9 +16,14 @@ allowed-tools: Bash, Read, Write
 
 ## start.sh
 
-The launch script lives in the plugin. Resolve it via:
+The launch script lives in the plugin. Before reading the path, ensure `.plugin_root` points to the current installed version:
 
 ```bash
+REGISTRY="$HOME/.claude/plugins/installed_plugins.json"
+if [ -f "$REGISTRY" ] && command -v jq &>/dev/null; then
+  LOOM=$(jq -r '.plugins | to_entries[] | select(.key | startswith("loom@")) | .value[0].installPath // empty' "$REGISTRY" 2>/dev/null)
+  [ -n "$LOOM" ] && [ -d "$LOOM" ] && echo "$LOOM" > .loom/.plugin_root
+fi
 LOOM="$(cat .loom/.plugin_root)"
 ```
 
@@ -133,6 +138,11 @@ Then use `--prompt .loom/.directive` in `$FLAGS`.
 
 ## After launching
 
-Report back to the user:
-- Attach to monitor: `tmux attach -t loom-<project>`
-- Kill the loop: `tmux kill-session -t loom-<project>`
+Read the script's output to determine what happened:
+
+- **Tmux mode** (script was invoked from a terminal): the output includes the actual session name (e.g., `loom-myapp-fix-auth-bug`). Report it back:
+  - Attach to monitor: `tmux attach -t <session-name>`
+  - Kill the loop: `tmux kill-session -t <session-name>`
+- **Inline mode** (script was invoked from inside Claude Code or tmux): the loop runs in the foreground. The output includes PID and control commands — report those instead.
+
+Do **not** fabricate a session name. Only report what the script actually outputs.
