@@ -850,7 +850,7 @@ if $USE_TMUX; then
     [ -n "$DIRECTIVE_FILE" ] && echo -e "  ${DIM}Src${NC}   $DIRECTIVE_FILE"
     [ "${USE_WORKTREE:-}" = "yes" ] && [ "${WORKTREE_DIR:-}" != "$PROJECT_DIR" ] && echo -e "  ${DIM}Tree${NC}  $WORKTREE_DIR"
     [ -n "${LOOM_CAPABILITIES:-}" ] && echo -e "  ${DIM}MCPs${NC}  ${GREEN}$LOOM_CAPABILITIES${NC}"
-    echo -en "  ${DIM}Stop${NC}  ${CYAN}touch $LOOM_DIR/.stop${NC}"
+    echo -e "  ${DIM}Stop${NC}  ${CYAN}touch $LOOM_DIR/.stop${NC}"
   } > "$LOOM_DIR/.header"
 
   # Generate header pane script (reads .header + .iter_state, computes elapsed timer)
@@ -927,7 +927,7 @@ if [ "${LOOM_TMUX_CHILD:-}" = "1" ]; then
     [ -n "$DIRECTIVE_FILE" ] && echo -e "  ${DIM}Src${NC}   $DIRECTIVE_FILE"
     [ "${USE_WORKTREE:-}" = "yes" ] && [ "${WORKTREE_DIR:-}" != "$PROJECT_DIR" ] && echo -e "  ${DIM}Tree${NC}  $WORKTREE_DIR"
     [ -n "${LOOM_CAPABILITIES:-}" ] && echo -e "  ${DIM}MCPs${NC}  ${GREEN}$LOOM_CAPABILITIES${NC}"
-    echo -en "  ${DIM}Stop${NC}  ${CYAN}touch $LOOM_DIR/.stop${NC}"
+    echo -e "  ${DIM}Stop${NC}  ${CYAN}touch $LOOM_DIR/.stop${NC}"
   } > "$LOOM_DIR/.header"
 else
   echo ""
