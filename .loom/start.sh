@@ -1135,7 +1135,7 @@ DRYEOF
   SUBAGENT_COUNT=0
   SUBAGENT_COMPLETED=0
   if [ -f "$SUBAGENT_LOG" ] && [ -s "$SUBAGENT_LOG" ]; then
-    eval "$(jq -s '
+    eval "$(jq -rs '
       ([.[] | select(.event == "dispatch")] | length) as $d |
       ([.[] | select(.event == "dispatch") | .index]) as $di |
       ([.[] | select(.event == "block_stop") | .index]) as $si |
