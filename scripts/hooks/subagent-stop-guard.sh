@@ -7,8 +7,8 @@
 # No-op outside Loom
 [ "$LOOM_ACTIVE" != "1" ] && exit 0
 
-# No enforcement in dry-run
-[ "$LOOM_DRY_RUN" = "1" ] && exit 0
+# No enforcement in preview
+[ "$LOOM_PREVIEW" = "1" ] && exit 0
 
 INPUT=$(cat)
 

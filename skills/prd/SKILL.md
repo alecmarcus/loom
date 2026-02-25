@@ -1,4 +1,14 @@
-# /prd (exec)
+---
+name: prd
+description: Generate a structured PRD from spec files, planning docs, or design sketches. Decomposes documents into atomic stories grouped into prioritized gates with dependency tracking.
+argument-hint: "<files...> [append] [prefix <PREFIX>] [max <#>]"
+disable-model-invocation: false
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
+---
+
+# /loom:prd
+
+Generates a PRD (`.loom/prd.json`) from `$ARGUMENTS`. Any source is valid, remote or local. Some examples: artifacts like specs, docs, architecture, sketches, ADRs, planning sessions; a URL; an external source available via MCP or cli like Linear, GitHub, Sentry, or Figma; or a plain text prompt.
 
 ## Arguments
 
@@ -156,7 +166,6 @@ Do not break any of the rules.
     - When in doubt about where source content belongs, put it in `details` under a descriptive key rather than dropping it. Preserve lists exactly by converting them to arrays.
 11. **Source backlinks** — every story derived from a source document must include at least one entry in `sources`. This creates a traceable chain from spec to implementation. If a story spans multiple source files or sections, include all of them.
 12. **Tool detection** — auto-detect `tools` from acceptance criteria: browser/web UI/screenshots/DOM/CSS/responsive/HTML/page/viewport/click/form/input/button/navigation/render → `["browser"]`. Mobile app/simulator/emulator/gesture/tap/swipe/pinch/press/hold/drag/iOS/Android/app screen/push notification → `["mobile"]`. Figma/design fidelity/design tokens/pixel-matching/design system/design spec/color tokens/typography tokens/spacing tokens/component library → `["design"]`. Multiple may apply. If none apply → `[]`.
-
 
 #### Source preservation examples
 
@@ -321,4 +330,4 @@ PRD generated: .loom/prd.json
     gate-6  Polish & Documentation  P2   5 stories
 ```
 
-If the story count exceeds `max`, note which stories were omitted and suggest running `/prd append` with the remaining scope.
+If the story count exceeds `max`, note which stories were omitted and suggest running `/loom:prd append` with the remaining scope.

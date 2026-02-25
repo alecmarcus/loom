@@ -1,24 +1,38 @@
-# /loom setup
+---
+name: setup
+description: Set up Loom integrations by fetching and executing setup guides. Covers Playwright, mobile testing, GitHub issues, Linear, and more.
+argument-hint: "<topic>"
+disable-model-invocation: false
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch
+---
+
+# /loom:setup
 
 Set up Loom integrations by fetching and executing setup guides from the Loom repository. Guides are agent-executable instructions — fetch one and follow it step by step.
 
 ## Arguments
 
-The query is everything the user typed after `setup`. Examples:
+The query is everything the user typed after `setup` (available as `$ARGUMENTS`). Examples:
 
-- `/loom setup playwright`
-- `/loom setup mobile testing`
-- `/loom setup github issues`
-- `/loom setup how do I run loom on a large feature`
-- `/loom setup from my product specs`
-- `/loom setup for implementing a new feature`
-- `/loom setup sentry`
+- `/loom:setup playwright`
+- `/loom:setup mobile testing`
+- `/loom:setup github issues`
+- `/loom:setup how do I run loom on a large feature`
+- `/loom:setup from my product specs`
+- `/loom:setup for implementing a new feature`
+- `/loom:setup sentry`
 
 If the query is empty or `help`, show the available guides (from Step 1) and exit.
 
 ## Step 1: Fetch the index
 
-Fetch the setup guide index from GitHub:
+First, try to read the setup guide index from the bundled plugin. Read `.loom/.plugin_root` to find the plugin root, then read `setup/README.md` from there:
+
+```bash
+LOOM="$(cat .loom/.plugin_root)" && cat "$LOOM/setup/README.md"
+```
+
+If that fails (e.g., `.plugin_root` doesn't exist), fall back to fetching from GitHub:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alecmarcus/loom/main/setup/README.md
@@ -64,7 +78,13 @@ Show the full index and exit.
 
 ## Step 3: Fetch the guide
 
-Once a guide is identified, fetch its raw content from GitHub. The base URL is:
+Once a guide is identified, try reading from the bundled plugin first:
+
+```bash
+LOOM="$(cat .loom/.plugin_root)" && cat "$LOOM/setup/<relative-path>"
+```
+
+Fall back to fetching from GitHub if needed. The base URL is:
 
 ```
 https://raw.githubusercontent.com/alecmarcus/loom/main/setup/
@@ -92,7 +112,7 @@ Read the fetched content and execute it step by step, as if it were a skill. The
 - Run verification steps
 - Report results
 
-Adapt to the current project context. For example, if the guide says to add a test script to `package.json` but the project uses `pyproject.toml`, adapt accordingly. You have access to the `/prd` skill; use it if you need to.
+Adapt to the current project context. For example, if the guide says to add a test script to `package.json` but the project uses `pyproject.toml`, adapt accordingly. You have access to the `/loom:prd` skill; use it if you need to.
 
 ## Rules
 

@@ -53,29 +53,29 @@ Requirements:
 
 ```bash
 # From Claude Code (recommended)
-/prd specs/auth.md specs/api.md specs/frontend.md
+/loom:prd specs/auth.md specs/api.md specs/frontend.md
 
 # Any number of files, any format
-/prd design.md architecture.md wireframes.md meeting-notes.md
+/loom:prd design.md architecture.md wireframes.md meeting-notes.md
 ```
 
 ### With options
 
 ```bash
 # Custom story ID prefix (default: project dir name, uppercased, 5 chars max)
-/prd specs/auth.md prefix AUTH
+/loom:prd specs/auth.md prefix AUTH
 
 # Limit total stories (useful for large specs)
-/prd specs/*.md max 30
+/loom:prd specs/*.md max 30
 
 # Combine options
-/prd specs/auth.md specs/api.md prefix API max 20
+/loom:prd specs/auth.md specs/api.md prefix API max 20
 ```
 
 ### Standalone script
 
 ```bash
-.loom/prd.sh specs/auth.md specs/api.md
+/loom:prd specs/auth.md specs/api.md
 ```
 
 ## Step 3: Review the Output
@@ -121,7 +121,7 @@ jq '[.stories[] | select(.blockedBy | length > 0)] | .[] | {id, blockedBy}' .loo
 
 ```bash
 # Add stories from additional specs without touching existing ones
-/prd specs/new-feature.md append
+/loom:prd specs/new-feature.md append
 
 # Append continues ID numbering from the highest existing ID
 ```
@@ -143,14 +143,14 @@ jq '(.stories[] | select(.id == "APP-010")).blockedBy += ["APP-005"]' .loom/prd.
 
 ### Add tool requirements
 
-If `/prd` didn't auto-detect that a story needs browser/mobile/design tools:
+If `/loom:prd` didn't auto-detect that a story needs browser/mobile/design tools:
 
 ```bash
 # Mark a story as needing browser testing
 jq '(.stories[] | select(.id == "APP-012")).tools = ["browser"]' .loom/prd.json > tmp.json && mv tmp.json .loom/prd.json
 ```
 
-## How /prd Works Internally
+## How /loom:prd Works Internally
 
 Understanding the pipeline helps you write better specs:
 
@@ -178,7 +178,7 @@ This means the subagent implementing a story never needs to read the original sp
 
 ## Tips
 
-- **One feature per `/prd` run.** Don't mix unrelated features in one PRD. Use separate PRD runs with `append` to add features incrementally.
+- **One feature per `/loom:prd` run.** Don't mix unrelated features in one PRD. Use separate PRD runs with `append` to add features incrementally.
 - **Heading depth matters.** Each h2/h3 section typically becomes one story. If a section is too large for a single subagent (~15-30 min), split it into subsections.
 - **Requirements as bullets, not prose.** Bullets become acceptance criteria 1:1. Requirements buried in paragraphs may be missed or merged.
 - **State edge cases explicitly.** "Returns 404 if user not found" is an acceptance criterion. "Handles errors" is not.

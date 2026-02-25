@@ -31,7 +31,7 @@ The Figma MCP requires OAuth on first use. This is an **interactive step** — y
 4. Authorize the connection
 5. The token is cached for future sessions
 
-**Important:** OAuth cannot be completed in unattended Loom runs. Complete this step interactively before starting Loom, or use `/loom` from inside Claude Code (which can handle the OAuth prompt).
+**Important:** OAuth cannot be completed in unattended Loom runs. Complete this step interactively before starting Loom, or use `/loom:start` from inside Claude Code (which can handle the OAuth prompt).
 
 ### Step 3: Project-scope the MCP (optional)
 
@@ -52,10 +52,10 @@ Loom copies `.mcp.json` into worktrees automatically.
 
 ### Step 4: Verify capability detection
 
-Start a Loom dry run and check the header:
+Start a Loom preview and check the header:
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 ```
 
 The tmux header should show:
@@ -70,7 +70,7 @@ This confirms Loom detected the Figma MCP and mapped it to the `design` capabili
 
 ### Auto-detection keywords
 
-When you use `/prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords trigger `"tools": ["design"]`:
+When you use `/loom:prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords trigger `"tools": ["design"]`:
 
 - `Figma`, `design fidelity`, `design tokens`, `pixel-matching`, `design system`, `design spec`, `color tokens`, `typography tokens`, `spacing tokens`, `component library`
 
@@ -148,9 +148,9 @@ When you use `/prd` to generate stories, it auto-detects the `tools` field from 
 
 | Mode | Works? | Notes |
 |------|--------|-------|
-| `/loom` from Claude Code | Yes | OAuth can be completed interactively |
-| `.loom/start.sh` (first run) | No | OAuth requires a browser — complete it interactively first |
-| `.loom/start.sh` (after OAuth) | Yes | Cached token is reused |
+| `/loom:start` from Claude Code | Yes | OAuth can be completed interactively |
+| `start.sh` (first run) | No | OAuth requires a browser — complete it interactively first |
+| `start.sh` (after OAuth) | Yes | Cached token is reused |
 
 **Recommendation:** Complete OAuth interactively once, then use either mode. If the token expires, you'll need another interactive session.
 

@@ -1,0 +1,12 @@
+{
+  "name": "loom",
+  "description": "Autonomous development loop — runs Claude Code continuously to implement tasks from a PRD with parallel subagents, testing, and auto-commits.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Alec Marcus",
+    "url": "https://github.com/alecmarcus"
+  },
+  "repository": "https://github.com/alecmarcus/loom",
+  "license": "MIT",
+  "keywords": ["autonomous", "development", "loop", "prd", "orchestration"]
+}

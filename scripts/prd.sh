@@ -12,8 +12,8 @@ set -euo pipefail
 #   prd.sh --prefix SCP spec.md
 # ─────────────────────────────────────────────────────────────────
 
-LOOM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$LOOM_DIR")"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+LOOM_DIR="$PROJECT_DIR/.loom"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 PRD_FILE="$LOOM_DIR/prd.json"
 

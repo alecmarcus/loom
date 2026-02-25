@@ -51,10 +51,10 @@ Loom copies `.mcp.json` into worktrees automatically.
 
 ### Step 3: Verify capability detection
 
-Start a Loom dry run and check the header for `browser` in the MCPs line:
+Start a Loom preview and check the header for `browser` in the MCPs line:
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 ```
 
 The tmux header should show:
@@ -69,11 +69,11 @@ This confirms Loom detected the Playwright MCP and mapped it to the `browser` ca
 
 ### Auto-detection keywords
 
-When you use `/prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords in your acceptance criteria trigger `"tools": ["browser"]`:
+When you use `/loom:prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords in your acceptance criteria trigger `"tools": ["browser"]`:
 
 - `browser`, `web UI`, `screenshots`, `DOM`, `CSS`, `responsive`, `HTML`, `page`, `viewport`, `click`, `form`, `input`, `button`, `navigation`, `render`
 
-Write acceptance criteria using these terms and `/prd` will set `"tools": ["browser"]` automatically.
+Write acceptance criteria using these terms and `/loom:prd` will set `"tools": ["browser"]` automatically.
 
 ### Example PRD story
 

@@ -26,18 +26,18 @@ Implement GitHub issues autonomously — fetch the issue, build it, close it.
 
 ```bash
 # From Claude Code
-/loom github 42
-/loom issue 42
+/loom:start github 42
+/loom:start issue 42
 
 # From bash
-.loom/start.sh --github 42
+/loom:start github 42
 ```
 
 ### By URL
 
 ```bash
-/loom github https://github.com/org/repo/issues/42
-.loom/start.sh --github "https://github.com/org/repo/issues/42"
+/loom:start github https://github.com/org/repo/issues/42
+/loom:start github "https://github.com/org/repo/issues/42"
 ```
 
 ### What happens
@@ -57,11 +57,11 @@ Implement GitHub issues autonomously — fetch the issue, build it, close it.
 
 ```bash
 # Find and fix issues matching a query
-/loom github "fix: authentication"
-.loom/start.sh --github "TypeError in checkout flow"
+/loom:start github "fix: authentication"
+/loom:start github "TypeError in checkout flow"
 
 # Natural language
-/loom github "all open bugs labeled critical"
+/loom:start github "all open bugs labeled critical"
 ```
 
 Under the hood, Loom runs:
@@ -78,10 +78,10 @@ Combine a GitHub issue with additional directives:
 
 ```bash
 # Implement the issue AND do extra work
-.loom/start.sh --github 42 --prompt "Also fix the related lint warnings"
+/loom:start github 42 --prompt "Also fix the related lint warnings"
 
 # Implement the issue with specific constraints
-.loom/start.sh --github 42 --prompt "Use the existing auth middleware, don't create a new one"
+/loom:start github 42 --prompt "Use the existing auth middleware, don't create a new one"
 ```
 
 The issue content and your prompt are merged into a single directive.
@@ -91,7 +91,7 @@ The issue content and your prompt are merged into a single directive.
 For quick fixes you want to apply directly:
 
 ```bash
-.loom/start.sh --github 42 --worktree false --pr false
+/loom:start github 42 --worktree false --pr false
 ```
 
 ## Writing Good GitHub Issues for Loom

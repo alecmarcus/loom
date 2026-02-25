@@ -44,17 +44,17 @@ Implement Linear tickets autonomously — fetch the ticket, build it, update the
 
 ```bash
 # From Claude Code
-/loom linear TEAM-42
+/loom:start linear TEAM-42
 
 # From bash
-.loom/start.sh --linear "TEAM-42"
+/loom:start linear "TEAM-42"
 ```
 
 ### By URL
 
 ```bash
-/loom linear https://linear.app/team/issue/TEAM-42
-.loom/start.sh --linear "https://linear.app/team/issue/TEAM-42"
+/loom:start linear https://linear.app/team/issue/TEAM-42
+/loom:start linear "https://linear.app/team/issue/TEAM-42"
 ```
 
 ### What happens
@@ -73,16 +73,16 @@ Linear mode accepts natural language queries to find and implement tickets:
 
 ```bash
 # Find tickets by description
-/loom linear "fix authentication bug"
+/loom:start linear "fix authentication bug"
 
 # Find tickets by label or state
-/loom linear "all in-progress bugs on the API team"
+/loom:start linear "all in-progress bugs on the API team"
 
 # SLA-based queries
-/loom linear "fix all tickets with less than 24h left in the SLA"
+/loom:start linear "fix all tickets with less than 24h left in the SLA"
 
 # Priority-based
-/loom linear "all urgent tickets assigned to me"
+/loom:start linear "all urgent tickets assigned to me"
 ```
 
 Loom uses Linear MCP tools to search for matching issues, then implements the most relevant ones.
@@ -91,10 +91,10 @@ Loom uses Linear MCP tools to search for matching issues, then implements the mo
 
 ```bash
 # Implement the ticket with constraints
-.loom/start.sh --linear "TEAM-42" --prompt "Use the existing auth middleware, don't create a new one"
+/loom:start linear "TEAM-42" --prompt "Use the existing auth middleware, don't create a new one"
 
 # Combine Linear with GitHub
-.loom/start.sh --linear "TEAM-42" --github 13 --prompt "Also fix lint"
+/loom:start linear "TEAM-42" --github 13 --prompt "Also fix lint"
 ```
 
 ## Writing Good Linear Tickets for Loom
@@ -145,5 +145,5 @@ Technical notes:
 - Loom attempts to update status after implementation — check `status.md` for errors
 
 **Search returns no results**
-- Try simpler queries first: `/loom linear "TEAM"` to verify connectivity
+- Try simpler queries first: `/loom:start linear "TEAM"` to verify connectivity
 - Check that the MCP can list issues: start Claude Code and ask to list issues

@@ -84,10 +84,10 @@ Loom copies `.mcp.json` into worktrees automatically.
 
 ### Step 3: Verify capability detection
 
-Start a Loom dry run and check the header:
+Start a Loom preview and check the header:
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 ```
 
 The tmux header should show:
@@ -102,7 +102,7 @@ This confirms Loom detected the Mobile MCP and mapped it to the `mobile` capabil
 
 ### Auto-detection keywords
 
-When you use `/prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords trigger `"tools": ["mobile"]`:
+When you use `/loom:prd` to generate stories, it auto-detects the `tools` field from acceptance criteria. The following keywords trigger `"tools": ["mobile"]`:
 
 - `mobile app`, `simulator`, `emulator`, `gesture`, `tap`, `swipe`, `pinch`, `press`, `hold`, `drag`, `iOS`, `Android`, `app screen`, `push notification`
 

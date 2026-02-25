@@ -4,10 +4,12 @@ set -euo pipefail
 # ─── Loom Status: Run Summary ──────────────────────────────────
 # Parses master.log and status.md to display a summary of the
 # current or most recent Loom run.
+# Uses CWD-relative .loom/ (per-project state).
 # ─────────────────────────────────────────────────────────────────
 
-LOOM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_NAME="$(basename "$(dirname "$LOOM_DIR")")"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+LOOM_DIR="$PROJECT_DIR/.loom"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
 TMUX_SESSION="loom-${PROJECT_NAME}"
 MASTER_LOG="$LOOM_DIR/logs/master.log"
 

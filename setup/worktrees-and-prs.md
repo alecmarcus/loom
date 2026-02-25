@@ -26,7 +26,7 @@ Key behaviors:
 ### Disable worktree (work in current branch)
 
 ```bash
-.loom/start.sh --worktree false
+/loom:start --worktree false
 ```
 
 Use this when:
@@ -50,7 +50,7 @@ PRs are only created if at least one iteration completed work (prevents empty PR
 ### Disable PR
 
 ```bash
-.loom/start.sh --pr false
+/loom:start --pr false
 ```
 
 Use this when:
@@ -61,7 +61,7 @@ Use this when:
 ### Combine: no worktree, no PR
 
 ```bash
-.loom/start.sh --worktree false --pr false
+/loom:start --worktree false --pr false
 ```
 
 This is the most "direct" mode — Loom commits to your current branch and doesn't push or create a PR. Useful for:
@@ -73,7 +73,7 @@ This is the most "direct" mode — Loom commits to your current branch and doesn
 ### Resume the most recent worktree
 
 ```bash
-.loom/start.sh --resume
+/loom:start resume
 ```
 
 This resumes the worktree at the current directory (or the most recently used worktree).
@@ -82,10 +82,10 @@ This resumes the worktree at the current directory (or the most recently used wo
 
 ```bash
 # By path
-.loom/start.sh --resume /path/to/.claude/worktrees/loom/abc123-myproject
+/loom:start resume /path/to/.claude/worktrees/loom/abc123-myproject
 
 # By branch name
-.loom/start.sh --resume loom/abc123-myproject
+/loom:start resume loom/abc123-myproject
 ```
 
 ### When to resume
@@ -108,7 +108,7 @@ This resumes the worktree at the current directory (or the most recently used wo
 
 ```bash
 # Start a feature with full isolation
-.loom/start.sh --prompt "Implement user authentication"
+/loom:start --prompt "Implement user authentication"
 # → creates worktree, works, pushes, creates PR
 
 # Review the PR, merge it
@@ -120,7 +120,7 @@ This resumes the worktree at the current directory (or the most recently used wo
 
 ```bash
 # Work directly on your current branch, no PR
-.loom/start.sh --worktree false --pr false --prompt "Fix all lint errors"
+/loom:start --worktree false --pr false --prompt "Fix all lint errors"
 # → commits directly to your current branch
 # Review with git log, push when ready
 ```
@@ -129,29 +129,29 @@ This resumes the worktree at the current directory (or the most recently used wo
 
 ```bash
 # Start the feature
-.loom/start.sh
+/loom:start
 
 # After some iterations, stop gracefully
 touch .loom/.stop
 # Loom finishes current iteration, stops
 
 # Review progress
-/loom status
+/loom:status
 git log --oneline -20  # in the worktree
 
 # Resume
-.loom/start.sh --resume
+/loom:start resume
 ```
 
 ### Multiple concurrent features
 
 ```bash
 # Feature A on one worktree
-.loom/start.sh --prompt "Add authentication"
+/loom:start --prompt "Add authentication"
 # → creates worktree A
 
 # Feature B on another worktree (from a different terminal)
-.loom/start.sh --prompt "Add payment processing"
+/loom:start --prompt "Add payment processing"
 # → creates worktree B
 
 # Both run concurrently in separate tmux sessions
@@ -168,7 +168,7 @@ tmux list-sessions  # shows loom-myproject-1, loom-myproject-2
 - Check that `--pr` wasn't set to `false`
 - PRs are only created if at least one iteration did work
 - Check that the remote is accessible: `git remote -v`
-- Check push permissions: `git push --dry-run`
+- Check push permissions: `git push --preview`
 
 **Can't find the worktree**
 - Worktrees are in `.claude/worktrees/loom/`

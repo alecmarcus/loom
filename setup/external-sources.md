@@ -33,10 +33,10 @@ Slack mode requires a message permalink URL:
 
 ```bash
 # From Claude Code
-/loom slack https://team.slack.com/archives/C07ABC123/p1234567890
+/loom:start slack https://team.slack.com/archives/C07ABC123/p1234567890
 
 # From bash
-.loom/start.sh --slack "https://team.slack.com/archives/C07ABC123/p1234567890"
+/loom:start --slack "https://team.slack.com/archives/C07ABC123/p1234567890"
 ```
 
 ### How to get a permalink
@@ -53,7 +53,7 @@ In Slack: hover over a message → click the three dots menu → "Copy link".
 ### With extra instructions
 
 ```bash
-.loom/start.sh --slack "https://team.slack.com/..." --prompt "Only fix the backend, skip frontend changes"
+/loom:start --slack "https://team.slack.com/..." --prompt "Only fix the backend, skip frontend changes"
 ```
 
 ---
@@ -89,12 +89,12 @@ Accepts a page URL or search query:
 
 ```bash
 # By URL
-/loom notion https://notion.so/team/API-Redesign-Spec-abc123
-.loom/start.sh --notion "https://notion.so/team/API-Redesign-Spec-abc123"
+/loom:start notion https://notion.so/team/API-Redesign-Spec-abc123
+/loom:start --notion "https://notion.so/team/API-Redesign-Spec-abc123"
 
 # By search
-/loom notion "API redesign spec"
-.loom/start.sh --notion "checkout flow requirements"
+/loom:start notion "API redesign spec"
+/loom:start --notion "checkout flow requirements"
 ```
 
 ### What happens
@@ -107,7 +107,7 @@ Accepts a page URL or search query:
 ### With extra instructions
 
 ```bash
-.loom/start.sh --notion "https://notion.so/..." --prompt "Focus on the backend API only, skip the frontend for now"
+/loom:start --notion "https://notion.so/..." --prompt "Focus on the backend API only, skip the frontend for now"
 ```
 
 ---
@@ -143,12 +143,12 @@ Accepts an issue URL or search query:
 
 ```bash
 # By URL
-/loom sentry https://sentry.io/organizations/org/issues/12345/
-.loom/start.sh --sentry "https://sentry.io/organizations/org/issues/12345/"
+/loom:start sentry https://sentry.io/organizations/org/issues/12345/
+/loom:start --sentry "https://sentry.io/organizations/org/issues/12345/"
 
 # By search
-/loom sentry "TypeError in checkout flow"
-.loom/start.sh --sentry "unhandled promise rejection"
+/loom:start sentry "TypeError in checkout flow"
+/loom:start --sentry "unhandled promise rejection"
 ```
 
 ### What happens
@@ -164,7 +164,7 @@ Sentry mode is specifically designed for bug fixing — it always writes regress
 ### With extra instructions
 
 ```bash
-.loom/start.sh --sentry "https://sentry.io/..." --prompt "Also add error boundary components to prevent this class of error"
+/loom:start --sentry "https://sentry.io/..." --prompt "Also add error boundary components to prevent this class of error"
 ```
 
 ---
@@ -175,13 +175,13 @@ All source types can be combined with each other and with `--prompt`:
 
 ```bash
 # Sentry error + GitHub issue + custom instructions
-.loom/start.sh --sentry "https://sentry.io/..." --github 42 --prompt "Also update the error handling docs"
+/loom:start --sentry "https://sentry.io/..." --github 42 --prompt "Also update the error handling docs"
 
 # Notion spec + Linear ticket
-.loom/start.sh --notion "API redesign spec" --linear "TEAM-42"
+/loom:start --notion "API redesign spec" --linear "TEAM-42"
 
 # Slack request + specific constraints
-.loom/start.sh --slack "https://team.slack.com/..." --prompt "Use the v2 API, not v1"
+/loom:start --slack "https://team.slack.com/..." --prompt "Use the v2 API, not v1"
 ```
 
 Each source adds a section to the directive. The agent receives all sources as context and implements holistically.

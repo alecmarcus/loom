@@ -28,14 +28,14 @@ Run a focused task without a PRD — give Loom a directive and let it execute.
 
 ```bash
 # Inline directive
-.loom/start.sh --prompt "Fix all lint errors"
+/loom:start --prompt "Fix all lint errors"
 
 # Directive from a file
 echo "Migrate all useState hooks to useReducer where state is complex" > task.md
-.loom/start.sh --prompt task.md
+/loom:start --prompt task.md
 
 # Piped input
-echo "Add JSDoc comments to all exported functions" | .loom/start.sh
+/loom:start 
 ```
 
 ## What Happens
@@ -56,7 +56,7 @@ echo "Add JSDoc comments to all exported functions" | .loom/start.sh
 For quick changes you want to review before committing to a branch:
 
 ```bash
-.loom/start.sh --prompt "Fix the typo in README.md" --worktree false --pr false
+/loom:start --prompt "Fix the typo in README.md" --worktree false --pr false
 ```
 
 ### Combine with external sources
@@ -65,10 +65,10 @@ Pull context from GitHub, Linear, or other sources alongside your directive:
 
 ```bash
 # Fix the issue AND clean up related code
-.loom/start.sh --github 42 --prompt "Also fix the related lint warnings"
+/loom:start github 42 --prompt "Also fix the related lint warnings"
 
 # Implement a Linear ticket with extra instructions
-.loom/start.sh --linear TEAM-42 --prompt "Use the existing auth middleware, don't create a new one"
+/loom:start linear TEAM-42 --prompt "Use the existing auth middleware, don't create a new one"
 ```
 
 ### Limit iterations
@@ -76,18 +76,18 @@ Pull context from GitHub, Linear, or other sources alongside your directive:
 For tasks that should complete in one pass:
 
 ```bash
-.loom/start.sh --prompt "Fix the failing test in tests/auth.spec.ts" --max-iterations 3
+/loom:start --prompt "Fix the failing test in tests/auth.spec.ts" --max-iterations 3
 ```
 
-### Dry run
+### Preview
 
 Preview what Loom will do without making changes:
 
 ```bash
-/loom dry-run
-# Note: dry-run only works for PRD mode from the slash command
-# For directive dry runs, use the bash script:
-.loom/start.sh --prompt "Fix all lint errors" --dry-run
+/loom:preview
+# Note: preview only works for PRD mode from the slash command
+# For directive previews, use the bash script:
+/loom:start --prompt "Fix all lint errors" --preview
 ```
 
 ## Monitoring
@@ -97,7 +97,7 @@ Preview what Loom will do without making changes:
 tmux attach -t loom-<project>
 
 # Check status
-/loom status
+/loom:status
 ```
 
 ## Stopping
@@ -110,7 +110,7 @@ touch .loom/.stop
 tmux kill-session -t loom-<project>
 
 # From Claude Code
-/loom stop
+/loom:stop
 ```
 
 ## Tips

@@ -12,7 +12,7 @@ Loom reads your project's `.mcp.json` and extracts all configured MCP server nam
 
 ### 2. Map to capabilities
 
-Each server name is checked against the built-in `CAPABILITY_MAP` in `.loom/start.sh`:
+Each server name is checked against the built-in `CAPABILITY_MAP` in `scripts/start.sh` (plugin root):
 
 ```bash
 CAPABILITY_MAP=(
@@ -70,7 +70,7 @@ Or in `.mcp.json`:
 ### Step 2: Verify detection
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 ```
 
 The tmux header should show:
@@ -94,20 +94,20 @@ Set the `tools` field to match the server name:
 
 Stories with `"tools": ["my-database"]` will only run when the `my-database` MCP is configured.
 
-### Caveat: `/prd` auto-detection
+### Caveat: `/loom:prd` auto-detection
 
-The `/prd` generator auto-detects `tools` based on acceptance criteria keywords, but it only recognizes `browser`, `mobile`, and `design`. Custom capabilities won't be auto-detected — you'll need to either:
+The `/loom:prd` generator auto-detects `tools` based on acceptance criteria keywords, but it only recognizes `browser`, `mobile`, and `design`. Custom capabilities won't be auto-detected — you'll need to either:
 
-1. Manually set `tools` on stories after `/prd` generates them
-2. Or mention the capability explicitly in your spec file and let `/prd` copy it into the story fields
+1. Manually set `tools` on stories after `/loom:prd` generates them
+2. Or mention the capability explicitly in your spec file and let `/loom:prd` copy it into the story fields
 
 ## Adding a Built-in Mapping
 
-If you want multiple server names to map to the same custom capability (like `playwright`/`chrome`/`puppeteer` all mapping to `browser`), add entries to `CAPABILITY_MAP` in `.loom/start.sh`:
+If you want multiple server names to map to the same custom capability (like `playwright`/`chrome`/`puppeteer` all mapping to `browser`), add entries to `CAPABILITY_MAP` in `scripts/start.sh` (plugin root):
 
 ### Step 1: Edit the CAPABILITY_MAP
 
-Open `.loom/start.sh` and find the `CAPABILITY_MAP` array (near line 731). Add your mappings:
+Open `scripts/start.sh` in the plugin root and find the `CAPABILITY_MAP` array (near line 731). Add your mappings:
 
 ```bash
 CAPABILITY_MAP=(
@@ -202,7 +202,7 @@ Or in `.mcp.json`:
 ### 2. Verify
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 # Header should show: MCPs  supabase
 ```
 

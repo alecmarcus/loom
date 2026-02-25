@@ -6,8 +6,10 @@ set -euo pipefail
 # each iteration. Designed for tmux-based monitoring.
 # ─────────────────────────────────────────────────────────────────
 
-LOOM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$LOOM_DIR")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+LOOM_DIR="$PROJECT_DIR/.loom"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 LOG_FILE="$LOOM_DIR/loom.log"
 TMUX_SESSION="loom-${PROJECT_NAME}"
@@ -20,7 +22,7 @@ if [ -n "${CLAUDECODE:-}" ] || [ -n "${TMUX:-}" ] || ! command -v tmux &>/dev/nu
 else
   USE_TMUX=true
 fi
-DRY_RUN=false
+PREVIEW=false
 DIRECTIVE_FILE=""
 TIMEOUT=10800
 MAX_FAILURES=3
@@ -66,6 +68,19 @@ has_sources() {
 
 short_hash() { head -c 4 /dev/urandom | xxd -p | head -c 6; }
 
+# ─── Template Resolution ────────────────────────────────────────
+# Local override (per-project) > plugin default
+resolve_template() {
+  local name="$1"
+  if [[ -f "$LOOM_DIR/$name" ]]; then
+    echo "$LOOM_DIR/$name"
+  elif [[ -f "$PLUGIN_ROOT/templates/$name" ]]; then
+    echo "$PLUGIN_ROOT/templates/$name"
+  else
+    die "Template $name not found"
+  fi
+}
+
 # ─── Parse Arguments ────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -75,8 +90,8 @@ while [[ $# -gt 0 ]]; do
       [[ "$MAX_ITERATIONS" =~ ^[0-9]+$ ]] || die "--max-iterations must be a positive integer, got '$MAX_ITERATIONS'"
       shift 2
       ;;
-    --dry-run|-d)
-      DRY_RUN=true
+    --preview|-d)
+      PREVIEW=true
       shift
       ;;
     --timeout)
@@ -153,7 +168,7 @@ Usage: start.sh [OPTIONS]
 
 Options:
   -m, --max-iterations N   Maximum loop iterations (default: 500)
-  -d, --dry-run            Analyze one iteration without executing changes
+  -d, --preview            Analyze one iteration without executing changes
   --timeout SECONDS        Per-iteration timeout (default: 10800)
   --max-failures N         Consecutive failures before halt (default: 3)
   -h, --help               Show this help
@@ -172,7 +187,7 @@ Sources (can be combined):
   Without a source flag, runs in PRD mode (reads prd.json).
   A directive can also be piped via stdin:
     echo 'Fix all lint errors' | start.sh
-    echo 'Only work on AC-001' | start.sh --dry-run
+    echo 'Only work on AC-001' | start.sh --preview
 
 Worktree:
   --worktree              Git worktree isolation (default: on)
@@ -374,8 +389,8 @@ fi
 
 # ─── Worktree Auto-Detection ────────────────────────────────────
 resolve_worktree() {
-  # Dry runs don't modify anything — skip worktree creation
-  if $DRY_RUN && [ -z "$RESUME_WORKTREE" ]; then
+  # Previews don't modify anything — skip worktree creation
+  if $PREVIEW && [ -z "$RESUME_WORKTREE" ]; then
     USE_WORKTREE="no"
     return
   fi
@@ -655,17 +670,13 @@ if ! command -v claude &>/dev/null; then
   die "claude CLI not found in PATH"
 fi
 
-if [[ ! -f "$LOOM_DIR/prompt.md" ]]; then
-  die "$LOOM_DIR/prompt.md not found"
-fi
+PROMPT_TEMPLATE="$(resolve_template "prompt.md")"
 
 if [ -n "$DIRECTIVE_FILE" ]; then
   if [[ ! -f "$DIRECTIVE_FILE" ]]; then
     die "directive file not found: $DIRECTIVE_FILE"
   fi
-  if [[ ! -f "$LOOM_DIR/directive.md" ]]; then
-    die "$LOOM_DIR/directive.md template not found"
-  fi
+  DIRECTIVE_TEMPLATE="$(resolve_template "directive.md")"
 fi
 
 # PRD mode requires prd.json
@@ -799,7 +810,7 @@ if $USE_TMUX; then
 
   # Build flags to forward
   FORWARD_FLAGS="--max-iterations $MAX_ITERATIONS --timeout $TIMEOUT --max-failures $MAX_FAILURES"
-  if $DRY_RUN; then FORWARD_FLAGS="$FORWARD_FLAGS --dry-run"; fi
+  if $PREVIEW; then FORWARD_FLAGS="$FORWARD_FLAGS --preview"; fi
 
   # Forward sources (each independently)
   [ -n "$SOURCES_LINEAR" ] && FORWARD_FLAGS="$FORWARD_FLAGS --linear $(printf '%q' "$SOURCES_LINEAR")"
@@ -954,8 +965,8 @@ else
   echo ""
 fi
 
-if $DRY_RUN; then
-  log "${YELLOW}${BOLD}DRY RUN${NC} — analysis only, no changes will be made"
+if $PREVIEW; then
+  log "${YELLOW}${BOLD}PREVIEW${NC} — analysis only, no changes will be made"
 fi
 
 # ─── Ensure log directory exists ────────────────────────────────
@@ -993,29 +1004,29 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
     # Directive mode: read template, split on {{DIRECTIVE}} marker,
     # insert user's directive content between the halves.
     DIRECTIVE_CONTENT="$(cat "$DIRECTIVE_FILE")"
-    PROMPT_TOP="$(sed '/^{{DIRECTIVE}}$/,$d' "$LOOM_DIR/directive.md")"
-    PROMPT_BOTTOM="$(sed '1,/^{{DIRECTIVE}}$/d' "$LOOM_DIR/directive.md")"
+    PROMPT_TOP="$(sed '/^{{DIRECTIVE}}$/,$d' "$DIRECTIVE_TEMPLATE")"
+    PROMPT_BOTTOM="$(sed '1,/^{{DIRECTIVE}}$/d' "$DIRECTIVE_TEMPLATE")"
     PROMPT="${PROMPT_TOP}${DIRECTIVE_CONTENT}"$'\n'"${PROMPT_BOTTOM}"
   else
     # Normal loop mode: full prompt.md orchestration with PRD
-    PROMPT="$(cat "$LOOM_DIR/prompt.md")"
+    PROMPT="$(cat "$PROMPT_TEMPLATE")"
   fi
 
   # ─── Iteration marker for stop-guard hook ──
   touch "$LOOM_DIR/.iteration_marker"
 
-  # ─── Dry-run: append analysis-only override ──
-  if $DRY_RUN; then
-    export LOOM_DRY_RUN=1
+  # ─── Preview: append analysis-only override ──
+  if $PREVIEW; then
+    export LOOM_PREVIEW=1
 
     if [ -n "$DIRECTIVE_FILE" ]; then
-      read -r -d '' DRY_ADDENDUM <<'DRYEOF' || true
+      read -r -d '' PREVIEW_ADDENDUM <<'PREVIEWEOF' || true
 
 ---
 
-## !! DRY RUN — DO NOT EXECUTE !!
+## !! PREVIEW — DO NOT EXECUTE !!
 
-This is a **dry run**. Read status.md (Step 1), then analyze the directive (Step 2), but **stop there**.
+This is a **preview**. Read status.md (Step 1), then analyze the directive (Step 2), but **stop there**.
 
 **DO NOT** execute anything. Do not launch subagents. Do not create, modify, or delete any files.
 
@@ -1034,15 +1045,15 @@ One line per subagent you would launch and what it would do.
 Which files would likely be created or modified.
 
 After outputting this report, exit immediately.
-DRYEOF
+PREVIEWEOF
     else
-      read -r -d '' DRY_ADDENDUM <<'DRYEOF' || true
+      read -r -d '' PREVIEW_ADDENDUM <<'PREVIEWEOF' || true
 
 ---
 
-## !! DRY RUN — DO NOT EXECUTE !!
+## !! PREVIEW — DO NOT EXECUTE !!
 
-This is a **dry run**. Perform Steps 1 and 2 exactly as written (read status.md, read prd.json with jq waves), but **stop there**.
+This is a **preview**. Perform Steps 1 and 2 exactly as written (read status.md, read prd.json with jq waves), but **stop there**.
 
 **DO NOT** execute Steps 3–4. Do not launch subagents. Do not create, modify, or delete any files.
 
@@ -1061,10 +1072,10 @@ One line per subagent you would launch: the story ID and a brief description of 
 Which files would likely be created or modified across all subagents.
 
 After outputting this report, exit immediately.
-DRYEOF
+PREVIEWEOF
     fi
 
-    PROMPT="$PROMPT"$'\n'"$DRY_ADDENDUM"
+    PROMPT="$PROMPT"$'\n'"$PREVIEW_ADDENDUM"
   fi
 
   cd "$PROJECT_DIR"
@@ -1130,8 +1141,6 @@ DRYEOF
   ITER_DURATION=$((ITER_END - ITER_START))
 
   # ─── Count subagent dispatches + completions ──
-  # Dispatches are content_block_start with name=="Task". Completions
-  # are content_block_stop events matched by index to a dispatch.
   SUBAGENT_COUNT=0
   SUBAGENT_COMPLETED=0
   if [ -f "$SUBAGENT_LOG" ] && [ -s "$SUBAGENT_LOG" ]; then
@@ -1210,15 +1219,15 @@ DRYEOF
     fi
   fi
 
-  # ─── Dry-run: one iteration only, no cooldown ──
-  if $DRY_RUN; then
-    log "${GREEN}Dry run analysis complete.${NC}"
+  # ─── Preview: one iteration only, no cooldown ──
+  if $PREVIEW; then
+    log "${GREEN}Preview analysis complete.${NC}"
     break
   fi
 
 done
 
-if ! $DRY_RUN && [ "$ITERATION" -ge "$MAX_ITERATIONS" ]; then
+if ! $PREVIEW && [ "$ITERATION" -ge "$MAX_ITERATIONS" ]; then
   log "${YELLOW}${BOLD}Loom completed $MAX_ITERATIONS iterations. Halting.${NC}"
   master_log "$ITERATION" "$MODE_LABEL" "MAX_ITER" "0" "Reached max iterations" "0"
 fi

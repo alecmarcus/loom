@@ -1,6 +1,6 @@
 # Setup Guides
 
-Step-by-step guides for Loom — written as agent-executable instructions. Run `/loom setup <name>` to have an agent fetch and execute any guide, or browse them here.
+Step-by-step guides for Loom — written as agent-executable instructions. Run `/loom:setup <name>` to have an agent fetch and execute any guide, or browse them here.
 
 ## Usage
 

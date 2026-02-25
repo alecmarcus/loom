@@ -10,7 +10,7 @@ Build an entire multi-story feature from spec documents using PRD mode — Loom'
 
 ## Step 1: Prepare Your Specs
 
-Gather your specification documents. Loom's `/prd` generator accepts any file format but works best with structured markdown.
+Gather your specification documents. Loom's `/loom:prd` generator accepts any file format but works best with structured markdown.
 
 A good spec file includes:
 - Clear sections with headings (h1-h6)
@@ -23,25 +23,25 @@ A good spec file includes:
 ls specs/feature-design.md specs/api-spec.md
 ```
 
-If your specs are in other formats (Notion export, Google Doc, PDF), convert them to markdown first. The `/prd` generator uses `mdq` to extract individual sections, so heading structure matters.
+If your specs are in other formats (Notion export, Google Doc, PDF), convert them to markdown first. The `/loom:prd` generator uses `mdq` to extract individual sections, so heading structure matters.
 
 ## Step 2: Generate the PRD
 
 ```bash
 # From inside Claude Code (recommended)
-/prd specs/feature-design.md specs/api-spec.md
+/loom:prd specs/feature-design.md specs/api-spec.md
 
 # With a custom story prefix
-/prd specs/feature-design.md prefix AUTH
+/loom:prd specs/feature-design.md prefix AUTH
 
 # Limit story count for a first pass
-/prd specs/feature-design.md max 20
+/loom:prd specs/feature-design.md max 20
 ```
 
 Or standalone:
 
 ```bash
-.loom/prd.sh specs/feature-design.md specs/api-spec.md
+/loom:prd specs/feature-design.md specs/api-spec.md
 ```
 
 The generator will:
@@ -71,24 +71,24 @@ jq '[.stories[] | select(.blockedBy == [] and .status == "pending")] | .[0:5] | 
 
 ```bash
 # Add more stories from additional specs
-/prd specs/additional-requirements.md append
+/loom:prd specs/additional-requirements.md append
 
 # Manually edit a story's acceptance criteria or dependencies
 # Use jq for targeted edits — never rewrite the entire file
 ```
 
-## Step 3: Dry Run (optional but recommended)
+## Step 3: Preview (optional but recommended)
 
 Preview what Loom will do on the first iteration without executing changes:
 
 ```bash
-/loom dry-run
+/loom:preview
 ```
 
 Or from bash:
 
 ```bash
-.loom/start.sh --dry-run
+/loom:preview
 ```
 
 This runs one iteration in read-only mode: recalls status, selects stories, shows which subagents would be dispatched and what they'd work on. Use this to verify the PRD decomposition looks right before committing to a full run.
@@ -97,10 +97,10 @@ This runs one iteration in read-only mode: recalls status, selects stories, show
 
 ```bash
 # From Claude Code
-/loom
+/loom:start
 
-# From bash
-.loom/start.sh
+# From bash (via plugin scripts)
+LOOM="$(cat .loom/.plugin_root)" && "$LOOM/scripts/start.sh"
 ```
 
 Loom will:
@@ -115,7 +115,7 @@ Loom will:
 tmux attach -t loom-<project>
 
 # Check status summary
-/loom status
+/loom:status
 
 # Watch the status file
 cat .loom/status.md
@@ -140,7 +140,7 @@ Loom handles everything autonomously:
 
 ### When stories have MCP tool requirements
 
-Stories with `"tools": ["browser"]`, `"tools": ["mobile"]`, or `"tools": ["design"]` are automatically skipped if the required MCP servers aren't configured. They stay `pending` and will be picked up if you add the MCP later. See the [validation setup guides](validation/) or run `/loom setup mobile`.
+Stories with `"tools": ["browser"]`, `"tools": ["mobile"]`, or `"tools": ["design"]` are automatically skipped if the required MCP servers aren't configured. They stay `pending` and will be picked up if you add the MCP later. See the [validation setup guides](validation/) or run `/loom:setup mobile`.
 
 ## Step 6: Completion
 
@@ -158,7 +158,7 @@ When the loop completes with worktree mode (default):
 Check the status and logs:
 
 ```bash
-/loom status
+/loom:status
 cat .loom/status.md
 tail -50 .loom/logs/master.log
 ```
@@ -172,27 +172,27 @@ Common reasons for early stops:
 
 ```bash
 # Resume the existing worktree
-.loom/start.sh --resume
+/loom:start resume
 
 # Resume a specific worktree
-.loom/start.sh --resume /path/to/worktree
+/loom:start resume /path/to/worktree
 ```
 
 ## Tuning
 
 | Scenario | Flag | Example |
 |----------|------|---------|
-| Large PRD, let it run longer | `--max-iterations` | `.loom/start.sh -m 1000` |
-| Fragile tests, allow more retries | `--max-failures` | `.loom/start.sh --max-failures 5` |
-| Slow builds, increase timeout | `--timeout` | `.loom/start.sh --timeout 7200` |
-| Skip worktree (work in current branch) | `--worktree false` | `.loom/start.sh --worktree false` |
-| Skip PR creation | `--pr false` | `.loom/start.sh --pr false` |
+| Large PRD, let it run longer | `--max-iterations` | `/loom:start -m 1000` |
+| Fragile tests, allow more retries | `--max-failures` | `/loom:start --max-failures 5` |
+| Slow builds, increase timeout | `--timeout` | `/loom:start --timeout 7200` |
+| Skip worktree (work in current branch) | `--worktree false` | `/loom:start --worktree false` |
+| Skip PR creation | `--pr false` | `/loom:start --pr false` |
 
 ## Checklist
 
 - [ ] Spec files are structured markdown with clear headings
-- [ ] `/prd` generated `.loom/prd.json` successfully
+- [ ] `/loom:prd` generated `.loom/prd.json` successfully
 - [ ] Story count and gate structure look reasonable
 - [ ] Root stories (no blockers) can start immediately
-- [ ] Dry run shows the expected first-iteration behavior
-- [ ] `/loom` launched and tmux session is visible
+- [ ] Preview shows the expected first-iteration behavior
+- [ ] `/loom:start` launched and tmux session is visible
