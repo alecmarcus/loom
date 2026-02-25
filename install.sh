@@ -108,13 +108,19 @@ SKILL_MAP=(
 for mapping in "${SKILL_MAP[@]}"; do
   src_name="${mapping%%:*}"
   dest_name="${mapping#*:}"
-  src_file="$SRC/skills/$src_name/SKILL.md"
+  src_dir="$SRC/skills/$src_name"
   dest_dir="$TARGET_DIR/.claude/skills/$dest_name"
 
-  if [ -f "$src_file" ]; then
+  if [ -f "$src_dir/SKILL.md" ]; then
     mkdir -p "$dest_dir"
     # Copy and update the name field in frontmatter
-    sed "s/^name: $src_name$/name: $dest_name/" "$src_file" > "$dest_dir/SKILL.md"
+    sed "s/^name: $src_name$/name: $dest_name/" "$src_dir/SKILL.md" > "$dest_dir/SKILL.md"
+    # Copy companion files and directories (guides, etc.)
+    for item in "$src_dir"/*; do
+      [ "$(basename "$item")" = "SKILL.md" ] && continue
+      [ -e "$item" ] || continue
+      cp -r "$item" "$dest_dir/"
+    done
   fi
 done
 
