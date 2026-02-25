@@ -10,7 +10,6 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 LOOM_DIR="$PROJECT_DIR/.loom"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
-TMUX_SESSION="loom-${PROJECT_NAME}"
 MASTER_LOG="$LOOM_DIR/logs/master.log"
 
 # Colors
@@ -26,8 +25,14 @@ NC='\033[0m'
 echo -e "${CYAN}${BOLD}Loom Status${NC}"
 echo -e "${DIM}─────────────────────────────────────────${NC}"
 
-if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
-  echo -e "  Status:  ${GREEN}${BOLD}RUNNING${NC} (tmux session: $TMUX_SESSION)"
+SESSIONS=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^loom-${PROJECT_NAME}" || true)
+if [ -n "$SESSIONS" ]; then
+  SESSION_COUNT=$(echo "$SESSIONS" | wc -l | tr -d ' ')
+  echo -e "  Status:  ${GREEN}${BOLD}RUNNING${NC} ($SESSION_COUNT session(s))"
+  echo "$SESSIONS" | while read -r s; do
+    slug="${s#loom-${PROJECT_NAME}-}"
+    echo -e "    ${GREEN}*${NC} $s  ${DIM}(slug: $slug)${NC}"
+  done
 else
   echo -e "  Status:  ${DIM}NOT RUNNING${NC}"
 fi
@@ -117,6 +122,30 @@ if [ -n "$LATEST_SUBAGENT_LOG" ] && [ -s "$LATEST_SUBAGENT_LOG" ]; then
       "  \(.ts)  \u001b[0;32mCOMPLETE\u001b[0m  idx:\(.index)"
     else empty end
   ' "$LATEST_SUBAGENT_LOG" 2>/dev/null || true
+fi
+
+# ─── Active Worktrees ──────────────────────────────────────────
+WT_BASE="$HOME/.claude-worktrees/$PROJECT_NAME"
+if [ -d "$WT_BASE" ]; then
+  WT_DIRS=$(find "$WT_BASE" -mindepth 2 -maxdepth 2 -name ".loom" -type d 2>/dev/null || true)
+  if [ -n "$WT_DIRS" ]; then
+    echo ""
+    echo -e "${CYAN}${BOLD}Worktrees${NC}"
+    echo -e "${DIM}─────────────────────────────────────────${NC}"
+    echo "$WT_DIRS" | while read -r wt_loom; do
+      wt_dir="$(dirname "$wt_loom")"
+      branch="$(git -C "$wt_dir" branch --show-current 2>/dev/null || echo "?")"
+      pid_status="${DIM}stopped${NC}"
+      if [ -f "$wt_loom/.pid" ]; then
+        wt_pid=$(cat "$wt_loom/.pid")
+        if kill -0 "$wt_pid" 2>/dev/null; then
+          pid_status="${GREEN}running${NC} (PID $wt_pid)"
+        fi
+      fi
+      echo -e "  ${BOLD}$branch${NC}  $pid_status"
+      echo -e "    ${DIM}$wt_dir${NC}"
+    done
+  fi
 fi
 
 # ─── Current status.md ──────────────────────────────────────────

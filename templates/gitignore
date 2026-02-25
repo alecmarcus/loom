@@ -1,8 +1,8 @@
 logs/
 .stop
 .pid
-.directive
-.piped_directive
+.directive*
+.piped_directive*
 .iteration_marker
 .header
 .header-pane.sh

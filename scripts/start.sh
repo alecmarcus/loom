@@ -185,6 +185,11 @@ while [[ $# -gt 0 ]]; do
       CREATE_PR=$([ "$2" = "true" ] && echo "yes" || echo "no")
       shift 2
       ;;
+    --session-name)
+      [[ $# -ge 2 ]] || die "$1 requires a value"
+      TMUX_SESSION="$2"
+      shift 2
+      ;;
     --resume)
       if [[ $# -ge 2 ]] && [[ "$2" != --* ]]; then
         RESUME_WORKTREE="$2"
@@ -739,42 +744,63 @@ cleanup() {
   if [ "${ITERATION:-0}" -gt 0 ]; then
     create_pr 2>/dev/null || true
   fi
-  rm -f "$LOOM_DIR/.directive" "$LOOM_DIR/.piped_directive" "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh"
+  rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh"
   cleanup_worktree
 }
 trap cleanup EXIT
 
 # ─── Concurrency Guard ──────────────────────────────────────────
-PID_FILE="$LOOM_DIR/.pid"
-if [ -f "$PID_FILE" ]; then
-  EXISTING_PID=$(cat "$PID_FILE")
-  if kill -0 "$EXISTING_PID" 2>/dev/null; then
-    die "Loom is already running (PID $EXISTING_PID). Use 'touch .loom/.stop' to stop it."
-  else
-    rm -f "$PID_FILE"
+# Only guard non-worktree runs (they share state, can't be concurrent).
+# Worktree runs get their own .loom/.pid after worktree setup.
+if [ "$USE_WORKTREE" != "yes" ]; then
+  PID_FILE="$LOOM_DIR/.pid"
+  if [ -f "$PID_FILE" ]; then
+    EXISTING_PID=$(cat "$PID_FILE")
+    if kill -0 "$EXISTING_PID" 2>/dev/null; then
+      die "Loom is already running (PID $EXISTING_PID). Use worktrees for concurrent runs."
+    else
+      rm -f "$PID_FILE"
+    fi
   fi
+  echo $$ > "$PID_FILE"
 fi
-echo $$ > "$PID_FILE"
 
 # ─── Worktree Setup ─────────────────────────────────────────────
 if [ "$USE_WORKTREE" = "yes" ]; then
   setup_worktree
+
+  # Derive run slug from worktree branch and update tmux session name
+  RUN_SLUG="${WORKTREE_BRANCH#loom/}"
+  TMUX_SESSION="loom-${PROJECT_NAME}-${RUN_SLUG}"
+
+  # Rename source directive to run-scoped name to prevent races
+  # between concurrent Looms writing to the same .directive file.
+  if [ -n "$DIRECTIVE_FILE" ] && [ "$DIRECTIVE_FILE" = "$LOOM_DIR/.directive" ]; then
+    mv "$DIRECTIVE_FILE" "${LOOM_DIR}/.directive-${RUN_SLUG}"
+    DIRECTIVE_FILE="${LOOM_DIR}/.directive-${RUN_SLUG}"
+  fi
+
   PROJECT_DIR="$WORKTREE_DIR"
   # Repoint all runtime state into the worktree so concurrent looms
   # don't clobber each other. Source .loom/ keeps only checked-in files.
   SOURCE_LOOM_DIR="$LOOM_DIR"
   LOOM_DIR="$PROJECT_DIR/.loom"
   LOG_FILE="$LOOM_DIR/loom.log"
-  rm -f "$SOURCE_LOOM_DIR/.pid"
   PID_FILE="$LOOM_DIR/.pid"
   echo $$ > "$PID_FILE"
   # Relocate composed directive into the worktree so concurrent looms
   # don't overwrite each other's directives.
-  if [ -n "$DIRECTIVE_FILE" ] && [ "$DIRECTIVE_FILE" = "$SOURCE_LOOM_DIR/.directive" ]; then
+  if [ -n "$DIRECTIVE_FILE" ] && [[ "$DIRECTIVE_FILE" == "$SOURCE_LOOM_DIR/"* ]]; then
     cp "$DIRECTIVE_FILE" "$LOOM_DIR/.directive"
+    rm -f "$DIRECTIVE_FILE"
     DIRECTIVE_FILE="$LOOM_DIR/.directive"
   fi
-  rm -f "$SOURCE_LOOM_DIR/.directive" "$SOURCE_LOOM_DIR/.piped_directive"
+  rm -f "$SOURCE_LOOM_DIR/.piped_directive"
+else
+  # Non-worktree runs: derive run slug from current branch
+  RUN_SLUG="$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo "default")"
+  RUN_SLUG="$(echo "$RUN_SLUG" | sed 's/[^a-zA-Z0-9-]/-/g')"
+  TMUX_SESSION="loom-${PROJECT_NAME}-${RUN_SLUG}"
 fi
 
 # ─── MCP Capability Detection ────────────────────────────────
@@ -868,6 +894,8 @@ if $USE_TMUX; then
   if [ "$USE_WORKTREE" = "yes" ]; then
     FORWARD_FLAGS="$FORWARD_FLAGS --resume $(printf '%q' "$WORKTREE_DIR")"
   fi
+  # Pass session name so the tmux child uses the same scoped name
+  FORWARD_FLAGS="$FORWARD_FLAGS --session-name $(printf '%q' "$TMUX_SESSION")"
   [ "$CREATE_PR" = "no" ] && FORWARD_FLAGS="$FORWARD_FLAGS --pr false"
 
   # Clear PID file so re-executed instance doesn't hit the concurrency guard
