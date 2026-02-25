@@ -1321,9 +1321,10 @@ PREVIEWEOF
   # ─── Parse result signal from iteration output ──
   RESULT_SIGNAL=$(parse_result_signal "$ITER_LOG")
 
-  # Fallback: if agent didn't emit a signal but clearly succeeded,
-  # infer from status.md content (which it writes as the final step).
-  if [ "$RESULT_SIGNAL" = "UNKNOWN" ] && [ "$CLAUDE_EXIT" -eq 0 ]; then
+  # Fallback: if agent didn't emit a signal, infer from status.md.
+  # The status-kill hook hard-kills the agent after status.md is written,
+  # so exit code is typically non-zero even on success.
+  if [ "$RESULT_SIGNAL" = "UNKNOWN" ]; then
     if [ -f "$LOOM_DIR/status.md" ] && [ "$LOOM_DIR/status.md" -nt "$LOOM_DIR/.iteration_marker" ]; then
       if grep -qiE 'LOOM_RESULT:DONE|no (actionable |remaining )?stories remain' "$LOOM_DIR/status.md" 2>/dev/null; then
         RESULT_SIGNAL="DONE"
@@ -1346,10 +1347,18 @@ PREVIEWEOF
     ITER_STATUS="timeout"
     ITER_REASON="Timed out after ${TIMEOUT}s"
     log "${RED}Iteration $ITERATION timed out after ${TIMEOUT}s${NC}"
-  elif [ "$CLAUDE_EXIT" -eq 0 ]; then
-    ITER_STATUS="exit-0"
+  elif [ "$RESULT_SIGNAL" = "SUCCESS" ] || [ "$RESULT_SIGNAL" = "DONE" ]; then
+    ITER_STATUS="ok"
     ITER_REASON="$RESULT_SIGNAL"
-    log "${GREEN}Iteration $ITERATION completed (exit 0, signal: $RESULT_SIGNAL)${NC}"
+    log "${GREEN}Iteration $ITERATION completed ($RESULT_SIGNAL)${NC}"
+  elif [ "$RESULT_SIGNAL" = "PARTIAL" ]; then
+    ITER_STATUS="partial"
+    ITER_REASON="$RESULT_SIGNAL"
+    log "${YELLOW}Iteration $ITERATION partial — some work failed${NC}"
+  elif [ "$CLAUDE_EXIT" -eq 0 ]; then
+    ITER_STATUS="ok"
+    ITER_REASON="$RESULT_SIGNAL"
+    log "${GREEN}Iteration $ITERATION completed${NC}"
   else
     ITER_STATUS="exit-$CLAUDE_EXIT"
     ITER_REASON="$RESULT_SIGNAL"
