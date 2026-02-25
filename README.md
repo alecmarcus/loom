@@ -41,7 +41,7 @@ Loom runs Claude Code in a continuous loop, reading tasks from a source(s) of yo
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  start.sh (loop)                 │
+│                  start.sh (loop)                │
 │                                                 │
 │  ┌───────────┐    ┌──────────┐    ┌──────────┐  │
 │  │ Read PRD  │───▶│ Dispatch │───▶│  Tests   │  │
