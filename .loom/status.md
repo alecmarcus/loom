@@ -1,19 +1,16 @@
 # Loom Status
 
 ## Failing Tests
-None — no test framework for this directive.
+None — no test suite for this directive.
 
 ## Uncommitted Changes
 None.
 
 ## Fixed This Iteration
-N/A.
+N/A
 
 ## Tests Added / Updated
-None — directive involves plain text file creation with no test framework.
+None.
 
 ## Work Summary
-**Iteration 2 of 3 complete.** Created `test-output/iter2.txt` with content "iteration 2 complete". Committed as `1e553ee`.
-
-Remaining:
-- Iteration 3: Create `test-output/iter3.txt` → then signal DONE
+Iteration 1 of 3 complete. Created `test-output/iter1.txt` containing "iteration 1 complete". Committed as `f92bb61`. Next iteration should create `test-output/iter2.txt`.
