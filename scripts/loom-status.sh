@@ -10,6 +10,19 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 LOOM_DIR="$PROJECT_DIR/.loom"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
+
+# If there's an active worktree with a running session, use its .loom/ instead
+WT_BASE="$HOME/.claude-worktrees/$PROJECT_NAME"
+if [ -d "$WT_BASE" ]; then
+  for wt_loom in "$WT_BASE"/*/.loom; do
+    [ -d "$wt_loom" ] || continue
+    if [ -f "$wt_loom/.pid" ] && kill -0 "$(cat "$wt_loom/.pid" 2>/dev/null)" 2>/dev/null; then
+      LOOM_DIR="$wt_loom"
+      break
+    fi
+  done
+fi
+
 MASTER_LOG="$LOOM_DIR/logs/iterations.log"
 
 # Colors
