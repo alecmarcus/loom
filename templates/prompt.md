@@ -84,7 +84,7 @@ If Step 1b found failing tests, include a fix for each failure alongside the PRD
 
 ## Step 3: Execute with Subagents
 
-Assign **exactly one story (or one test-fix)** per subagent. Launch **all** subagents simultaneously using the `Task` tool.
+Assign **exactly one story (or one test-fix)** per subagent. Launch **all** subagents simultaneously using the `Task` tool with `isolation: "worktree"` — each subagent gets its own isolated copy of the repo and its own branch. File-level conflicts between stories no longer corrupt the working tree; they become merge conflicts to resolve in Step 3.5.
 
 Each subagent prompt **must** include:
 
@@ -98,6 +98,23 @@ Each subagent prompt **must** include:
 8. A reminder to **update documentation** — if the story changes project-wide patterns, APIs, or conventions, update root `.docs/` and/or `CLAUDE.md`. If it adds or changes a feature area, create or update a `.docs/` directory and/or `CLAUDE.md` in the relevant feature directory with usage notes, constraints, and gotchas that aren't obvious from code alone. Skip for trivial changes.
 
 Do **not** combine multiple stories into a single subagent.
+
+### Step 3a: Merge Subagent Branches
+
+After **all** subagent results have arrived, merge each subagent's branch back into the main worktree. For each result that includes a branch name:
+
+```bash
+git merge --no-gpg-sign <branch-name>
+```
+
+If a merge produces conflicts:
+
+1. Inspect the conflicting files.
+2. Resolve, aiming to retain the intent of all changes unless they are directly in conflict. Then refer to the stories the changes aimed to complete and devise the optimal resolution.
+3. Stage resolved files and complete: `git merge --continue --no-gpg-sign`.
+4. If a merge cannot be resolved cleanly, abort it (`git merge --abort`) and choose the most valuable entire change set to keep. Discard the rest and leave them for a subsequent loop, ensuring that the story's status is not marked as done.
+
+Proceed to Step 4 only after all branches are merged or aborted.
 
 ---
 
@@ -209,7 +226,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 - **If no actionable stories remain and no tests are failing**, emit `LOOM_RESULT:DONE` and update status.md to say so. The loop controller will halt — do not emit `SUCCESS`.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
-- **NEVER call `TaskOutput`.** Background subagent results are delivered automatically.
+- **NEVER call `TaskOutput`.** Subagents run with `isolation: "worktree"` — their branch names and results are delivered automatically when they complete. Calling `TaskOutput` before all subagents finish risks interrupting still-running agents. This is also enforced by a hook that will block any `TaskOutput` call.
 
 ## Shell & Tool Hygiene
 
