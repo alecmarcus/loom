@@ -8,5 +8,19 @@
   },
   "repository": "https://github.com/alecmarcus/loom",
   "license": "MIT",
-  "keywords": ["autonomous", "development", "loop", "prd", "orchestration"]
+  "keywords": [
+    "autonomous",
+    "automated",
+    "development",
+    "iteration",
+    "loop",
+    "prd",
+    "orchestration",
+    "loom",
+    "ralph",
+    "wiggum",
+    "parallel",
+    "subagent",
+    "one-shot"
+  ]
 }
