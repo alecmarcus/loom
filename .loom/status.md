@@ -7,12 +7,12 @@ None.
 None.
 
 ## Fixed This Iteration
-N/A — first iteration.
+N/A.
 
 ## Tests Added / Updated
 None (simple file creation, no test framework involved).
 
 ## Work Summary
-**Iteration 1 of 3 complete.** Created `test-output/iter1.txt` containing "iteration 1 complete". Committed as `feat(test-output): create iter1.txt for loom iteration 1`.
+**Iteration 2 of 3 complete.** `test-output/iter2.txt` already existed with correct content ("iteration 2 complete") from a previous run and is committed. Verified it is present and correct.
 
-Remaining: iteration 2 (iter2.txt) and iteration 3 (iter3.txt).
+Remaining: iteration 3 (iter3.txt) — note that iter3.txt shows as deleted in git status, so it needs to be recreated.
