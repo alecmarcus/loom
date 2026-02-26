@@ -1403,6 +1403,7 @@ PREVIEWEOF
   fi
 
   master_log "$ITERATION" "$ITER_LABEL" "$ITER_STATUS" "$ITER_DURATION" "$ITER_REASON" "$SUBAGENT_COUNT"
+  local mins=$((ITER_DURATION / 60)) secs=$((ITER_DURATION % 60))
   notify "Loom — Iter $ITERATION" "$RESULT_SIGNAL (${mins}m ${secs}s, $SUBAGENT_COUNT subagents)"
 
   # ─── Done: no remaining work ──
