@@ -56,8 +56,24 @@ DIM='\033[2m'
 NC='\033[0m'
 TERM_WIDTH=$(tput cols 2>/dev/null || echo 120)
 
+# ─── Debug Logging ───────────────────────────────────────────────
+# Writes timestamped entries to .loom/logs/debug.log for full
+# lifecycle traceability. Every decision point logs here.
+DEBUG_LOG="$LOOM_DIR/logs/debug.log"
+debug() {
+  local ts
+  ts="$(date '+%Y-%m-%d %H:%M:%S.%N' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')"
+  echo "[$ts] [$$] $1" >> "$DEBUG_LOG" 2>/dev/null || true
+}
+mkdir -p "$LOOM_DIR/logs" 2>/dev/null || true
+debug "─── START.SH LAUNCHED ─── pid=$$ args=$*"
+debug "SCRIPT_DIR=$SCRIPT_DIR PLUGIN_ROOT=$PLUGIN_ROOT"
+debug "PROJECT_DIR=$PROJECT_DIR LOOM_DIR=$LOOM_DIR"
+debug "CLAUDECODE=${CLAUDECODE:-<unset>} TMUX=${TMUX:-<unset>} USE_TMUX=$USE_TMUX"
+debug "bash_version=$BASH_VERSION"
+
 # ─── Helpers ─────────────────────────────────────────────────────
-die() { echo -e "${RED}Error: $1${NC}" >&2; exit 1; }
+die() { debug "FATAL: $1"; echo -e "${RED}Error: $1${NC}" >&2; exit 1; }
 
 is_url() { [[ "$1" == http://* ]] || [[ "$1" == https://* ]]; }
 
@@ -835,22 +851,34 @@ unset CLAUDECODE
 # variable and no-op when it's absent, so they don't affect normal
 # Claude Code sessions.
 export LOOM_ACTIVE=1
+debug "LOOM_ACTIVE=1 exported. LOOM_PREVIEW=${LOOM_PREVIEW:-<unset>}"
 
 # ─── Cleanup ─────────────────────────────────────────────────────
 cleanup() {
   local exit_code=$?
+  debug "─── CLEANUP TRAP FIRED ─── exit_code=$exit_code iteration=${ITERATION:-0}"
+  debug "  LINENO=${BASH_LINENO[0]:-?} FUNCNAME=${FUNCNAME[1]:-main} BASH_COMMAND=${BASH_COMMAND:-?}"
   # Log exit for post-mortem diagnosis of silent deaths
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Loop exiting (exit $exit_code, iteration ${ITERATION:-0})" >> "$LOG_FILE" 2>/dev/null || true
   # Only attempt PR creation if the loop actually ran iterations.
   # Prevents premature push on early exit (e.g. --resume with no work).
   if [ "${ITERATION:-0}" -gt 0 ]; then
+    debug "  calling create_pr (ITERATION > 0)"
     create_pr 2>/dev/null || true
+    debug "  create_pr done"
+  else
+    debug "  skipping create_pr (ITERATION=0)"
   fi
+  debug "  removing sentinels"
   rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh"
+  debug "  calling cleanup_worktree"
   cleanup_worktree
+  debug "─── CLEANUP COMPLETE ───"
 }
 trap cleanup EXIT
+trap 'debug "ERR TRAP: line=${LINENO} cmd=${BASH_COMMAND} exit=$?"' ERR
 
+debug "Concurrency guard. USE_WORKTREE=$USE_WORKTREE"
 # ─── Concurrency Guard ──────────────────────────────────────────
 # Only guard non-worktree runs (they share state, can't be concurrent).
 # Worktree runs get their own .loom/.pid after worktree setup.
@@ -1078,6 +1106,7 @@ HEADEREOF
 
   # Main pane: the loom loop (LOOM_TMUX_CHILD tells the child to
   # write its banner to .header instead of stdout)
+  debug "Launching tmux session '$TMUX_SESSION' with: $0 $FORWARD_FLAGS"
   tmux new-session -d -s "$TMUX_SESSION" -x "$TERM_COLS" -y "$TERM_LINES" \
     "CLAUDE_PROJECT_DIR=$(printf '%q' "$PROJECT_DIR") LOOM_TMUX_CHILD=1 exec $0 $FORWARD_FLAGS"
 
@@ -1188,15 +1217,18 @@ mkdir -p "$LOOM_DIR/logs"
 
 # ─── Clean stale sentinels ──────────────────────────────────────
 rm -f "$LOOM_DIR/.iteration_marker"
+debug "Stale sentinels cleaned. Entering main loop. MAX_ITERATIONS=$MAX_ITERATIONS"
 
 # ─── Main Loop ───────────────────────────────────────────────────
 ITERATION=0
 
 while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
   ITERATION=$((ITERATION + 1))
+  debug "─── LOOP TOP ─── iteration=$ITERATION max=$MAX_ITERATIONS failures=$CONSECUTIVE_FAILURES/$MAX_FAILURES"
 
   # ─── Graceful stop: check for .stop sentinel ──
   if [ -f "$LOOM_DIR/.stop" ]; then
+    debug "BREAK: .stop sentinel found"
     log "${YELLOW}${BOLD}Graceful stop requested${NC} (.loom/.stop found). Halting after iteration $((ITERATION - 1))."
     rm -f "$LOOM_DIR/.stop"
     notify "Loom — Stopped" "Graceful stop after $((ITERATION - 1)) iterations."
@@ -1205,6 +1237,7 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
 
   # ─── Circuit breaker: consecutive failures ──
   if [ "$CONSECUTIVE_FAILURES" -ge "$MAX_FAILURES" ]; then
+    debug "BREAK: circuit breaker tripped ($CONSECUTIVE_FAILURES >= $MAX_FAILURES)"
     log "${RED}${BOLD}Circuit breaker tripped:${NC} $CONSECUTIVE_FAILURES consecutive failures. Halting."
     master_log "$ITERATION" "$MODE_LABEL" "HALTED" "0" "Circuit breaker: $CONSECUTIVE_FAILURES consecutive failures" "0"
     notify "Loom ✗ Circuit Breaker" "$CONSECUTIVE_FAILURES consecutive failures. Halted."
@@ -1233,6 +1266,7 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
 
   # ─── Iteration marker for stop-guard hook ──
   touch "$LOOM_DIR/.iteration_marker"
+  debug "Iteration marker touched. Prompt built (${#PROMPT} chars). PRD=$PRD_PATH"
 
   # ─── Preview: append analysis-only override ──
   if $PREVIEW; then
@@ -1315,6 +1349,8 @@ PREVIEWEOF
 
   DISPATCH_LOG="$LOOM_DIR/logs/$(date '+%Y%m%d-%H%M%S')-${ITER_LABEL}-dispatches.jsonl"
 
+  debug "Launching claude -p pipeline. CLAUDE_PREFIX='$CLAUDE_PREFIX' TIMEOUT=$TIMEOUT"
+  debug "  ITER_LOG=$ITER_LOG DISPATCH_LOG=$DISPATCH_LOG"
   set +e
   # Pipeline: claude | tee (dispatch sidecar) | jq (text+tool names) | tee (log capture)
   # PIPESTATUS[0] = claude (or timeout wrapper)
@@ -1349,10 +1385,15 @@ PREVIEWEOF
       else empty end' 2>/dev/null | \
     tee >(strip_ansi | tee -a "$LOG_FILE" > "$ITER_LOG")
   CLAUDE_EXIT=${PIPESTATUS[0]}
+  PIPE1=${PIPESTATUS[1]:-?}
+  PIPE2=${PIPESTATUS[2]:-?}
+  PIPE3=${PIPESTATUS[3]:-?}
+  debug "Pipeline finished. PIPESTATUS=[$CLAUDE_EXIT,$PIPE1,$PIPE2,$PIPE3]"
   set -e
 
   ITER_END=$(date +%s)
   ITER_DURATION=$((ITER_END - ITER_START))
+  debug "Duration: ${ITER_DURATION}s"
 
   # ─── Count subagent dispatches + orphans via dispatch log ──
   SUBAGENT_COUNT=0
@@ -1374,8 +1415,11 @@ PREVIEWEOF
     fi
   fi
 
+  debug "Subagent count: $SUBAGENT_COUNT"
+
   # ─── Parse result signal from iteration output ──
   RESULT_SIGNAL=$(parse_result_signal "$ITER_LOG")
+  debug "parse_result_signal from ITER_LOG: '$RESULT_SIGNAL'"
 
   # Fallback: if agent didn't emit a signal, infer from status.md.
   # The stop-guard hook allows exit once status.md is written, and
@@ -1392,8 +1436,13 @@ PREVIEWEOF
         RESULT_SIGNAL="SUCCESS"
       fi
       log "${DIM}(inferred signal from status.md: $RESULT_SIGNAL)${NC}"
+      debug "Inferred signal from status.md: '$RESULT_SIGNAL'"
+    else
+      debug "status.md fallback: file missing or not newer than marker"
     fi
   fi
+
+  debug "Final RESULT_SIGNAL='$RESULT_SIGNAL' CLAUDE_EXIT=$CLAUDE_EXIT"
 
   # ─── Determine iteration status ──
   ITER_STATUS="unknown"
@@ -1421,13 +1470,17 @@ PREVIEWEOF
     log "${YELLOW}Iteration $ITERATION finished (exit $CLAUDE_EXIT, signal: $RESULT_SIGNAL)${NC}"
   fi
 
+  debug "ITER_STATUS=$ITER_STATUS ITER_REASON=$ITER_REASON"
   master_log "$ITERATION" "$ITER_LABEL" "$ITER_STATUS" "$ITER_DURATION" "$ITER_REASON" "$SUBAGENT_COUNT"
+  debug "master_log written"
   ITER_MINS=$((ITER_DURATION / 60))
   ITER_SECS=$((ITER_DURATION % 60))
   notify "Loom — Iter $ITERATION" "$RESULT_SIGNAL (${ITER_MINS}m ${ITER_SECS}s, $SUBAGENT_COUNT subagents)"
+  debug "notify sent"
 
   # ─── Done: no remaining work ──
   if [ "$RESULT_SIGNAL" = "DONE" ]; then
+    debug "BREAK: RESULT_SIGNAL=DONE — all work complete"
     log "${GREEN}${BOLD}All work complete.${NC} Halting loop."
     notify "Loom ✓ Complete" "All work done after $ITERATION iterations."
     break
@@ -1438,22 +1491,29 @@ PREVIEWEOF
     if [ ! -f "$LOOM_DIR/status.md" ] || [ "$LOOM_DIR/status.md" -ot "$LOOM_DIR/.iteration_marker" ]; then
       # status.md not updated — count as failure
       CONSECUTIVE_FAILURES=$((CONSECUTIVE_FAILURES + 1))
+      debug "Circuit breaker: status.md NOT updated. failures=$CONSECUTIVE_FAILURES/$MAX_FAILURES"
       log "${YELLOW}status.md not updated — failure $CONSECUTIVE_FAILURES/$MAX_FAILURES${NC}"
     else
       # Success — reset counter
+      debug "Circuit breaker: status.md updated. Resetting failures to 0"
       CONSECUTIVE_FAILURES=0
     fi
+  else
+    debug "Circuit breaker: no .iteration_marker found (skipping check)"
   fi
 
   # ─── Commit status.md as iteration checkpoint ──
   if [ -f "$LOOM_DIR/status.md" ] && [ "$LOOM_DIR/status.md" -nt "$LOOM_DIR/.iteration_marker" ]; then
+    debug "Committing status.md checkpoint"
     (
       cd "$PROJECT_DIR"
       git add "$LOOM_DIR/status.md" 2>>"$LOG_FILE"
       git commit --no-gpg-sign -m "chore(loom): iteration $ITERATION checkpoint [$RESULT_SIGNAL]" \
         -m "iteration: $ITERATION, status: $ITER_STATUS" 2>>"$LOG_FILE"
-    ) && log "${DIM}Committed status.md checkpoint${NC}" \
-      || log "${YELLOW}status.md checkpoint commit failed (see above)${NC}"
+    ) && { debug "  status.md commit succeeded"; log "${DIM}Committed status.md checkpoint${NC}"; } \
+      || { debug "  status.md commit failed"; log "${YELLOW}status.md checkpoint commit failed (see above)${NC}"; }
+  else
+    debug "Skipping status.md commit (file missing or not newer than marker)"
   fi
 
   # ─── Clean up Claude Code temp task output ──
@@ -1468,11 +1528,15 @@ PREVIEWEOF
 
   # ─── Preview: one iteration only, no cooldown ──
   if $PREVIEW; then
+    debug "BREAK: preview mode — one iteration only"
     log "${GREEN}Preview analysis complete.${NC}"
     break
   fi
 
+  debug "─── LOOP BOTTOM ─── iteration=$ITERATION — continuing to next iteration"
+
 done
+debug "─── LOOP EXITED ─── after $ITERATION iteration(s). PREVIEW=$PREVIEW MAX_ITERATIONS=$MAX_ITERATIONS"
 log "${DIM}Loop exited after $ITERATION iteration(s)${NC}"
 
 if ! $PREVIEW && [ "$ITERATION" -ge "$MAX_ITERATIONS" ]; then

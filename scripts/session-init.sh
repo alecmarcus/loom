@@ -9,6 +9,9 @@
 # Only activate if this project has been initialized for Loom
 [ -d ".loom" ] || exit 0
 
+_dbg() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [session-init] $1" >> ".loom/logs/debug.log" 2>/dev/null || true; }
+_dbg "fired. pwd=$(pwd)"
+
 # Resolve plugin root: registry > $0 > existing .plugin_root
 PLUGIN_ROOT=""
 REGISTRY="$HOME/.claude/plugins/installed_plugins.json"
@@ -30,6 +33,9 @@ fi
 # Sanity check: plugin root must contain scripts/start.sh
 if [ -f "$PLUGIN_ROOT/scripts/start.sh" ]; then
   echo "$PLUGIN_ROOT" > .loom/.plugin_root
+  _dbg "  wrote .plugin_root=$PLUGIN_ROOT"
+else
+  _dbg "  WARNING: $PLUGIN_ROOT/scripts/start.sh not found"
 fi
 
 exit 0

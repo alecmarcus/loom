@@ -10,6 +10,9 @@
 # No enforcement in preview
 [ "$LOOM_PREVIEW" = "1" ] && exit 0
 
+LOOM_DIR="${CLAUDE_PROJECT_DIR:-.}/.loom"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [subagent-recall] injecting context" >> "$LOOM_DIR/logs/debug.log" 2>/dev/null || true
+
 jq -n '{
   hookSpecificOutput: {
     hookEventName: "SubagentStart",

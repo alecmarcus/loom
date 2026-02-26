@@ -7,6 +7,9 @@
 # No-op outside Loom
 [ "$LOOM_ACTIVE" != "1" ] && exit 0
 
+LOOM_DIR="${CLAUDE_PROJECT_DIR:-.}/.loom"
+_dbg() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [bash-guard] $1" >> "$LOOM_DIR/logs/debug.log" 2>/dev/null || true; }
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
@@ -49,6 +52,7 @@ POLLING=(
 
 POLLING_RE=$(IFS='|'; echo "${POLLING[*]}")
 if echo "$COMMAND" | grep -qE "$POLLING_RE"; then
+  _dbg "DENY polling: $COMMAND"
   jq -n '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
@@ -65,6 +69,7 @@ if echo "$COMMAND" | grep -qE "$BLOCKED_RE"; then
   # Match found — identify which pattern for the deny reason
   for pattern in "${BLOCKED[@]}"; do
     if echo "$COMMAND" | grep -qE "$pattern"; then
+      _dbg "DENY destructive: pattern='$pattern' cmd=$COMMAND"
       jq -n --arg reason "Destructive command blocked by Loom safety guard: matched pattern '$pattern'" '{
         hookSpecificOutput: {
           hookEventName: "PreToolUse",

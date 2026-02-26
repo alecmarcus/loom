@@ -8,6 +8,9 @@
 # No-op outside Loom
 [ "$LOOM_ACTIVE" != "1" ] && exit 0
 
+LOOM_DIR="${CLAUDE_PROJECT_DIR:-.}/.loom"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [block-interactive] denied interactive tool" >> "$LOOM_DIR/logs/debug.log" 2>/dev/null || true
+
 jq -n '{
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
