@@ -1329,6 +1329,8 @@ PREVIEWEOF
   # PIPESTATUS[1] = tee (dispatch sidecar fork)
   # PIPESTATUS[2] = jq text/tool extraction
   # PIPESTATUS[3] = tee (log capture)
+  # NOTE: --verbose is REQUIRED with --output-format stream-json --print;
+  # removing it causes claude to exit 1 with "stream-json requires --verbose".
   $CLAUDE_PREFIX claude -p \
     --dangerously-skip-permissions \
     --output-format stream-json \
