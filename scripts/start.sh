@@ -1328,7 +1328,6 @@ PREVIEWEOF
   # PIPESTATUS[2] = tee (log capture)
   $CLAUDE_PREFIX claude -p \
     --dangerously-skip-permissions \
-    --verbose \
     --output-format stream-json \
     --include-partial-messages \
     "$PROMPT" 2>>"$LOG_FILE" | \
