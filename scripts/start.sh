@@ -1332,6 +1332,7 @@ PREVIEWEOF
   $CLAUDE_PREFIX claude -p \
     --dangerously-skip-permissions \
     --output-format stream-json \
+    --verbose \
     --include-partial-messages \
     "$PROMPT" 2>>"$LOG_FILE" | \
     tee >(jq --unbuffered -c '
