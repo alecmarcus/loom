@@ -1303,7 +1303,10 @@ PREVIEWEOF
       else empty
       end
     ' >> "$SUBAGENT_LOG" 2>/dev/null || true) | \
-    jq --unbuffered -rj 'select(.type == "stream_event" and .event.delta.type? == "text_delta") | .event.delta.text' 2>/dev/null | \
+    jq --unbuffered -rj 'select(.type == "stream_event") |
+      if .event.delta.type? == "text_delta" then .event.delta.text
+      elif .event.type? == "content_block_start" and .event.content_block.type? == "text" and (.event.index // 0) > 0 then "\n"
+      else empty end' 2>/dev/null | \
     tee >(strip_ansi | tee -a "$LOG_FILE" > "$ITER_LOG")
   CLAUDE_EXIT=${PIPESTATUS[0]}
   set -e
