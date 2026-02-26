@@ -101,13 +101,16 @@ Do **not** combine multiple stories into a single subagent.
 
 After launching all subagents, **stop and wait**. Do not make any tool calls. Do not poll with Bash. Do not check git status, read files, or monitor progress. Subagent results are delivered to you automatically when each one completes. You will receive them without doing anything.
 
-### Step 3a: Merge Subagent Branches
+### Step 3a: Merge Subagent Results
 
-After **all** subagent results have arrived, merge each subagent's branch back into the main worktree. For each result that includes a branch name:
+After **all** subagent results have arrived, integrate the work. The Task tool's worktree isolation can behave in several ways — handle all of them:
 
-```bash
-git merge --no-gpg-sign <branch-name>
-```
+1. **Result includes a branch name** → merge it:
+   ```bash
+   git merge --no-gpg-sign <branch-name>
+   ```
+2. **Result does NOT include a branch name, or the branch doesn't exist** → the subagent's work may already be committed to the current branch, or the Task tool ran without worktree isolation. Check `git log` for new commits and inspect the working tree for changes. Do **not** assume failure — verify before concluding work is missing.
+3. **Work is already on the current branch** → nothing to merge. Move on.
 
 If a merge produces conflicts:
 
@@ -116,7 +119,9 @@ If a merge produces conflicts:
 3. Stage resolved files and complete: `git merge --continue --no-gpg-sign`.
 4. If a merge cannot be resolved cleanly, abort it (`git merge --abort`) and choose the most valuable entire change set to keep. Discard the rest and leave them for a subsequent loop, ensuring that the story's status is not marked as done.
 
-Proceed to Step 4 only after all branches are merged or aborted.
+**Do not re-implement work that subagents already completed.** If you can't find a branch, check whether the commits are already present before declaring the work lost.
+
+Proceed to Step 4 only after all results are integrated.
 
 ---
 
