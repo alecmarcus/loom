@@ -13,4 +13,4 @@ N/A
 None.
 
 ## Work Summary
-Iteration 1 of 3 complete. Created `test-output/iter1.txt` containing "iteration 1 complete". Committed as `f92bb61`. Next iteration should create `test-output/iter2.txt`.
+Iteration 2 of 3 complete. Created `test-output/iter2.txt` containing "iteration 2 complete". Committed as `d2d9fbb`. Next iteration should create `test-output/iter3.txt` and then signal DONE.
