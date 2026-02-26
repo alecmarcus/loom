@@ -7,12 +7,12 @@ None.
 None.
 
 ## Fixed This Iteration
-N/A.
+N/A — first iteration.
 
 ## Tests Added / Updated
-None — simple file creation directive.
+None (simple file creation, no test framework involved).
 
 ## Work Summary
-**Iteration 2 of 3 complete.** Created `test-output/iter2.txt` containing "iteration 2 complete". File was auto-committed by loom.
+**Iteration 1 of 3 complete.** Created `test-output/iter1.txt` containing "iteration 1 complete". Committed as `feat(test-output): create iter1.txt for loom iteration 1`.
 
-Next iteration should create `test-output/iter3.txt` and then signal DONE.
+Remaining: iteration 2 (iter2.txt) and iteration 3 (iter3.txt).
