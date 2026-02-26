@@ -871,6 +871,11 @@ cleanup() {
   fi
   debug "  removing sentinels"
   rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh"
+  # Kill the tmux session — helper panes are useless without the loop
+  if [ -n "${TMUX_SESSION:-}" ]; then
+    debug "  killing tmux session '$TMUX_SESSION'"
+    tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
+  fi
   debug "  calling cleanup_worktree"
   cleanup_worktree
   debug "─── CLEANUP COMPLETE ───"
@@ -1138,34 +1143,21 @@ HEADEREOF
   echo -e "  Kill:    ${BOLD}tmux kill-session -t $TMUX_SESSION${NC}"
   echo -e "  Stop:    ${BOLD}touch .loom/.stop${NC} (finishes current iteration)"
 
-  # Auto-attach when running from an interactive terminal
-  if [ -t 0 ]; then
-    exec tmux attach -t "$TMUX_SESSION"
-  fi
   # The tmux child owns all runtime state now — disable cleanup so the
   # parent doesn't delete files (.directive, .piped_directive) before
   # the async child reads them. The child handles its own cleanup.
   trap - EXIT
 
-  # ─── Iteration Watcher (non-interactive parent) ─────────────────
-  # When not attached to a terminal (i.e. launched from Claude Code),
-  # the parent stays alive and streams iteration lines to stdout.
-  # This lets the calling skill get per-iteration notifications from
-  # a single background Bash command — no separate watcher needed.
-  LOGFILE="$LOOM_DIR/logs/iterations.log"
-  BASELINE=$(wc -l < "$LOGFILE" 2>/dev/null || echo 0)
-  while true; do
-    CURRENT=$(wc -l < "$LOGFILE" 2>/dev/null || echo 0)
-    if [ "$CURRENT" -gt "$BASELINE" ]; then
-      tail -n $((CURRENT - BASELINE)) "$LOGFILE"
-      BASELINE="$CURRENT"
-    fi
-    if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
-      echo "LOOP_TERMINATED"
-      exit 0
-    fi
-    sleep 3
-  done
+  # Auto-attach when running from a real interactive terminal.
+  if [ -t 0 ] && [ -t 1 ]; then
+    debug "auto-attaching to tmux (interactive terminal)"
+    exec tmux attach -t "$TMUX_SESSION"
+  fi
+
+  # Non-interactive (Claude Code): parent exits, skill uses
+  # iteration-watcher.sh relay for per-iteration notifications.
+  debug "non-interactive launch — parent exiting (use iteration-watcher.sh for monitoring)"
+  exit 0
 fi
 
 # ─── Banner ──────────────────────────────────────────────────────

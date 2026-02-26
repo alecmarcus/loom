@@ -137,23 +137,25 @@ Then use `--prompt .loom/.directive` in `$FLAGS`.
 LOOM="$(cat .loom/.plugin_root)" && unset CLAUDECODE && "$LOOM/scripts/start.sh" $FLAGS
 ```
 
-The script launches the tmux session and then stays alive as an iteration watcher, streaming per-iteration log lines to stdout. When the loop terminates, it prints `LOOP_TERMINATED` and exits. Since it runs as a background Bash command, you'll receive notifications as output arrives.
-
-## After launching
-
-The initial output (before the watcher takes over) tells you what happened:
-
-- **Tmux mode**: the output includes the actual session name (e.g., `loom-myapp-fix-auth-bug`). Report it back:
+The script launches the tmux session, prints session info, and exits. The output includes the actual session name (e.g., `loom-myapp-fix-auth-bug`). Report it back:
   - Attach to monitor: `tmux attach -t <session-name>`
   - Kill the loop: `tmux kill-session -t <session-name>`
   - Stop gracefully: `touch .loom/.stop`
-- **Inline mode** (inside Claude Code or tmux): the loop runs in the foreground. Report PID and control commands from the output.
 
 Do **not** fabricate a session name. Only report what the script actually outputs.
 
-## Handling watcher notifications
+## Iteration watcher relay
 
-The background Bash command will produce output as iterations complete. When you receive a notification:
+After launching, start monitoring via the iteration watcher relay pattern. Each watcher invocation waits for the next iteration to complete, reports it, and exits — giving you one notification per iteration.
 
-- **Iteration line** (e.g., `2026-02-26 14:30:00 | #3 | prd | SUCCESS | 120s | ...`): Report the result to the user briefly.
-- **`LOOP_TERMINATED`**: The loop has ended. Report final status to the user.
+**Start the relay** immediately after the launch notification arrives:
+```bash
+LOOM="$(cat .loom/.plugin_root)" && "$LOOM/scripts/iteration-watcher.sh" "<session-name>" .loom
+```
+Run this with `run_in_background: true`. The session name must match what `start.sh` output.
+
+**When the watcher notification arrives**, it will contain one of:
+- **Iteration line(s)** (e.g., `2026-02-26 14:30:00 | #3 | prd | SUCCESS | 120s | ...`): Report the result to the user briefly, then **immediately launch another watcher** with the same command to continue monitoring.
+- **`LOOP_TERMINATED`** (possibly followed by final log lines): The loop has ended. Report final status to the user. Do **not** relaunch the watcher.
+
+**Critical**: Always relaunch the watcher after an iteration line. The relay must continue until you see `LOOP_TERMINATED`. Never skip relaunching — the user may not be at their computer and relies on you for status updates.

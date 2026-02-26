@@ -28,13 +28,13 @@ done
 BASELINE=$(wc -l < "$LOGFILE" 2>/dev/null || echo 0)
 _dbg "started. session=$SESSION logfile=$LOGFILE baseline=$BASELINE pid_file=$PID_FILE"
 
-# Determine liveness check mode: tmux session or PID file
+# Check if the loop is still alive.
+# start.sh kills its tmux session on exit, so has-session is reliable.
+# PID file is a fallback for inline/nohup mode (no tmux).
 is_loop_alive() {
-  # Try tmux first
   if tmux has-session -t "$SESSION" 2>/dev/null; then
     return 0
   fi
-  # Fallback: check PID file (inline/nohup mode)
   if [ -f "$PID_FILE" ]; then
     local pid
     pid=$(cat "$PID_FILE" 2>/dev/null)
