@@ -12,10 +12,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Task",
-        "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/background-tasks.sh" }]
-      },
-      {
         "matcher": "Bash",
         "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/bash-guard.sh" }]
       },
