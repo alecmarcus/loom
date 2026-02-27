@@ -83,6 +83,190 @@ has_sources() {
   [ -n "$SOURCES_SENTRY" ] || [ -n "$SOURCES_PROMPT" ] || [ -n "$SOURCES_PIPED" ]
 }
 
+# Extract platform, type, and ID from a URL. Returns kebab-case slug or empty.
+# Supports: GitHub, Linear, GitLab, Jira, Sentry, Slack, Notion, Bitbucket, Shortcut, Asana
+parse_source_url() {
+  local url="$1"
+  # Strip trailing slashes and whitespace
+  url="$(echo "$url" | sed 's|/*$||; s/^[[:space:]]*//; s/[[:space:]]*$//')"
+
+  case "$url" in
+    # GitHub: /issues/N, /pull/N, /discussions/N
+    *github.com/*/issues/[0-9]*)
+      echo "gh-issue-$(echo "$url" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+')" ;;
+    *github.com/*/pull/[0-9]*)
+      echo "gh-pr-$(echo "$url" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+')" ;;
+    *github.com/*/discussions/[0-9]*)
+      echo "gh-disc-$(echo "$url" | grep -oE 'discussions/[0-9]+' | grep -oE '[0-9]+')" ;;
+
+    # Linear: /issue/TEAM-123 or TEAM-123
+    *linear.app/*/issue/*)
+      echo "linear-$(echo "$url" | grep -oE 'issue/[A-Za-z]+-[0-9]+' | sed 's|issue/||' | tr '[:upper:]' '[:lower:]')" ;;
+
+    # GitLab: /-/issues/N, /-/merge_requests/N
+    *gitlab.com/*/-/issues/[0-9]*)
+      echo "gl-issue-$(echo "$url" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+')" ;;
+    *gitlab.com/*/-/merge_requests/[0-9]*)
+      echo "gl-mr-$(echo "$url" | grep -oE 'merge_requests/[0-9]+' | grep -oE '[0-9]+')" ;;
+
+    # Jira: /browse/PROJ-123
+    *atlassian.net/browse/*)
+      echo "jira-$(echo "$url" | grep -oE 'browse/[A-Za-z]+-[0-9]+' | sed 's|browse/||' | tr '[:upper:]' '[:lower:]')" ;;
+
+    # Sentry: /issues/N (org can be subdomain or path)
+    *sentry.io/*/issues/[0-9]* | *sentry.io/issues/[0-9]*)
+      echo "sentry-$(echo "$url" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+')" ;;
+
+    # Slack: /archives/CHANNEL_ID/pTIMESTAMP or just /archives/CHANNEL_ID
+    *slack.com/archives/C[0-9A-Z]*/p[0-9]*)
+      echo "slack-$(echo "$url" | grep -oE 'C[0-9A-Z]+' | head -1 | tr '[:upper:]' '[:lower:]')-$(echo "$url" | grep -oE 'p[0-9]+' | head -1 | tail -c 7)" ;;
+    *slack.com/archives/C[0-9A-Z]*)
+      echo "slack-$(echo "$url" | grep -oE 'C[0-9A-Z]+' | head -1 | tr '[:upper:]' '[:lower:]')" ;;
+
+    # Notion: page ID (last 32 hex chars)
+    *notion.so/*)
+      local nid
+      nid="$(echo "$url" | grep -oE '[0-9a-f]{32}' | tail -1 | head -c 8)"
+      [ -n "$nid" ] && echo "notion-${nid}" ;;
+
+    # Bitbucket: /issues/N, /pull-requests/N
+    *bitbucket.org/*/issues/[0-9]*)
+      echo "bb-issue-$(echo "$url" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+')" ;;
+    *bitbucket.org/*/pull-requests/[0-9]*)
+      echo "bb-pr-$(echo "$url" | grep -oE 'pull-requests/[0-9]+' | grep -oE '[0-9]+')" ;;
+
+    # Shortcut (formerly Clubhouse): /story/N
+    *app.shortcut.com/*/story/[0-9]*)
+      echo "sc-story-$(echo "$url" | grep -oE 'story/[0-9]+' | grep -oE '[0-9]+')" ;;
+
+    # Asana: /0/N/N (task ID is last number)
+    *app.asana.com/*/[0-9]*)
+      echo "asana-$(echo "$url" | grep -oE '[0-9]+$')" ;;
+
+    # Linear ticket ID without URL (e.g. "SCP-142")
+    [A-Za-z]*-[0-9]*)
+      echo "linear-$(echo "$url" | tr '[:upper:]' '[:lower:]')" ;;
+  esac
+}
+
+# Fetch the title/summary of a source for richer branch slugs.
+# Tier 1: direct CLI (gh for GitHub URLs/numbers, glab for GitLab)
+#   → returns raw title string (needs separate slugify_title call)
+# Tier 2: claude -p with MCP tools (Linear, Slack, Notion, Sentry, GH queries)
+#   → returns pre-slugified 2-3 word kebab string (fetch+slugify in one LLM call)
+# Sets TITLE_IS_SLUG=1 for tier 2 results (already slugified, skip slugify_title).
+# Returns empty on failure. All calls wrapped in timeout 15.
+TITLE_IS_SLUG=0
+fetch_source_title() {
+  local source_type="$1" source_value="$2"
+  local title="" timeout_pfx=""
+  TITLE_IS_SLUG=0
+
+  # Resolve timeout binary (TIMEOUT_CMD may not be set yet at slug time)
+  if command -v gtimeout &>/dev/null; then
+    timeout_pfx="gtimeout 15"
+  elif command -v timeout &>/dev/null; then
+    timeout_pfx="timeout 15"
+  fi
+
+  local slug_instructions='Then compress that title into a 2-3 word kebab-case slug (lowercase, hyphens only). Output ONLY the slug — nothing else. No quotes, no explanation.'
+
+  case "$source_type" in
+    github)
+      if is_url "$source_value" || [[ "$source_value" =~ ^[0-9]+$ ]]; then
+        # Tier 1: gh CLI — fast, no LLM overhead
+        if command -v gh &>/dev/null; then
+          local num=""
+          if [[ "$source_value" =~ ^[0-9]+$ ]]; then
+            num="$source_value"
+          else
+            num="$(echo "$source_value" | grep -oE '(issues|pull)/[0-9]+' | grep -oE '[0-9]+' | head -1)"
+          fi
+          if [ -n "$num" ]; then
+            # Try issue first, fall back to PR
+            title="$($timeout_pfx gh issue view "$num" --json title -q .title 2>/dev/null)" || \
+            title="$($timeout_pfx gh pr view "$num" --json title -q .title 2>/dev/null)" || true
+          fi
+        fi
+      else
+        # GitHub query (free-text search) — tier 2 (fetch + slugify combined)
+        TITLE_IS_SLUG=1
+        title="$($timeout_pfx claude -p --model haiku "Search GitHub issues for: ${source_value}. Find the single most relevant open issue. ${slug_instructions}" 2>/dev/null | head -1 | tr -d '[:space:]')" || true
+      fi
+      ;;
+    linear)
+      # Tier 2: fetch + slugify combined
+      TITLE_IS_SLUG=1
+      title="$($timeout_pfx claude -p --model haiku "Use Linear MCP tools to get the title of ticket or issue at: ${source_value}. ${slug_instructions}" 2>/dev/null | head -1 | tr -d '[:space:]')" || true
+      ;;
+    slack)
+      # Tier 2: fetch + slugify combined
+      TITLE_IS_SLUG=1
+      title="$($timeout_pfx claude -p --model haiku "Use Slack MCP tools to fetch the message at: ${source_value}. Summarize the topic, then compress into a 2-3 word kebab-case slug. Output ONLY the slug — nothing else." 2>/dev/null | head -1 | tr -d '[:space:]')" || true
+      ;;
+    notion)
+      # Tier 2: fetch + slugify combined
+      TITLE_IS_SLUG=1
+      title="$($timeout_pfx claude -p --model haiku "Use Notion MCP tools to get the page title at: ${source_value}. ${slug_instructions}" 2>/dev/null | head -1 | tr -d '[:space:]')" || true
+      ;;
+    sentry)
+      # Tier 2: fetch + slugify combined
+      TITLE_IS_SLUG=1
+      title="$($timeout_pfx claude -p --model haiku "Use Sentry MCP tools to get the issue title at: ${source_value}. ${slug_instructions}" 2>/dev/null | head -1 | tr -d '[:space:]')" || true
+      ;;
+    gitlab)
+      # Tier 1: glab CLI if available
+      if command -v glab &>/dev/null; then
+        local num=""
+        num="$(echo "$source_value" | grep -oE '(issues|merge_requests)/[0-9]+' | grep -oE '[0-9]+' | head -1)"
+        if [ -n "$num" ]; then
+          if [[ "$source_value" == *merge_requests* ]]; then
+            title="$($timeout_pfx glab mr view "$num" --output json 2>/dev/null | jq -r .title 2>/dev/null)" || true
+          else
+            title="$($timeout_pfx glab issue view "$num" --output json 2>/dev/null | jq -r .title 2>/dev/null)" || true
+          fi
+        fi
+      fi
+      ;;
+  esac
+
+  # Trim whitespace
+  title="$(echo "$title" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  echo "$title"
+}
+
+# Compress a title into a 2-3 word kebab-case slug via Haiku.
+# Returns validated slug or empty on failure.
+slugify_title() {
+  local title="$1"
+  [ -z "$title" ] && return
+
+  local raw
+  raw=$(claude -p --model haiku "$(cat <<SLUGIFYEOF
+Compress this title into a 2-3 word kebab-case slug. Output ONLY the slug — nothing else.
+
+Rules:
+- 2-3 lowercase words joined by hyphens
+- Only lowercase letters, numbers, and hyphens
+- No quotes, backticks, explanation, or punctuation
+
+Examples:
+"Fix watcher signal detection" → fix-watcher-signal
+"Add dark mode support" → add-dark-mode
+"Rate limiting for API endpoints" → rate-limiting
+
+Title: ${title:0:200}
+SLUGIFYEOF
+)" 2>/dev/null | head -1 | tr -d '[:space:]')
+
+  # Validate: 2-4 lowercase alphanumeric segments
+  if echo "$raw" | grep -qE '^[a-z0-9]+(-[a-z0-9]+){1,3}$'; then
+    echo "$raw"
+  else
+    echo "$raw" | grep -oE '[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+){0,2}' | head -1
+  fi
+}
+
 generate_branch_slug() {
   local ts slug raw
   ts="$(date '+%m%d-%H%M')"
@@ -95,19 +279,81 @@ generate_branch_slug() {
     return
   fi
 
-  # Directive / source mode: ask Haiku for a topical slug
-  local summary=""
+  # Source URLs: parse platform + type + ID, then enrich with title
+  local source_url="" source_type=""
   if [ -n "$SOURCES_LINEAR" ]; then
-    summary="linear: $SOURCES_LINEAR"
+    source_url="$SOURCES_LINEAR"; source_type="linear"
   elif [ -n "$SOURCES_GITHUB" ]; then
-    summary="github: $SOURCES_GITHUB"
+    source_url="$SOURCES_GITHUB"; source_type="github"
   elif [ -n "$SOURCES_SLACK" ]; then
-    summary="slack context"
+    source_url="$SOURCES_SLACK"; source_type="slack"
   elif [ -n "$SOURCES_NOTION" ]; then
-    summary="notion: $SOURCES_NOTION"
+    source_url="$SOURCES_NOTION"; source_type="notion"
   elif [ -n "$SOURCES_SENTRY" ]; then
-    summary="sentry: $SOURCES_SENTRY"
-  elif [ -n "$SOURCES_PROMPT" ]; then
+    source_url="$SOURCES_SENTRY"; source_type="sentry"
+  fi
+  # Detect GitLab specifically
+  if [ -n "$source_url" ] && [[ "$source_url" == *gitlab.com* ]]; then
+    source_type="gitlab"
+  fi
+
+  if [ -n "$source_url" ]; then
+    local parsed_slug title title_slug
+    parsed_slug="$(parse_source_url "$source_url")"
+    if [ -n "$parsed_slug" ]; then
+      # Fetch title metadata and compress into slug
+      title="$(fetch_source_title "$source_type" "$source_url")"
+      if [ -n "$title" ]; then
+        if [ "$TITLE_IS_SLUG" -eq 1 ]; then
+          # Tier 2: already slugified by the LLM — validate only
+          if echo "$title" | grep -qE '^[a-z0-9]+(-[a-z0-9]+){1,3}$'; then
+            title_slug="$title"
+          else
+            title_slug="$(echo "$title" | grep -oE '[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+){0,2}' | head -1)"
+          fi
+        else
+          # Tier 1: raw title from CLI — slugify separately
+          title_slug="$(slugify_title "$title")"
+        fi
+      fi
+
+      if [ -n "${title_slug:-}" ]; then
+        # Build enriched slug: prefix-ID-title
+        # Extract prefix and numeric/ticket ID from parsed_slug
+        local prefix="" id_part=""
+        case "$parsed_slug" in
+          gh-issue-*)  prefix="gh";     id_part="${parsed_slug#gh-issue-}" ;;
+          gh-pr-*)     prefix="gh-pr";  id_part="${parsed_slug#gh-pr-}" ;;
+          gh-disc-*)   prefix="gh-disc"; id_part="${parsed_slug#gh-disc-}" ;;
+          linear-*)    prefix="linear"; id_part="${parsed_slug#linear-}" ;;
+          gl-issue-*)  prefix="gl";     id_part="${parsed_slug#gl-issue-}" ;;
+          gl-mr-*)     prefix="gl-mr";  id_part="${parsed_slug#gl-mr-}" ;;
+          jira-*)      prefix="jira";   id_part="${parsed_slug#jira-}" ;;
+          sentry-*)    prefix="sentry"; id_part="${parsed_slug#sentry-}" ;;
+          slack-*)     prefix="slack";  id_part="${parsed_slug#slack-}" ;;
+          notion-*)    prefix="notion"; id_part="${parsed_slug#notion-}" ;;
+          bb-issue-*)  prefix="bb";     id_part="${parsed_slug#bb-issue-}" ;;
+          bb-pr-*)     prefix="bb-pr";  id_part="${parsed_slug#bb-pr-}" ;;
+          sc-story-*)  prefix="sc";     id_part="${parsed_slug#sc-story-}" ;;
+          asana-*)     prefix="asana";  id_part="${parsed_slug#asana-}" ;;
+          *)           prefix=""; id_part="" ;;
+        esac
+        if [ -n "$prefix" ] && [ -n "$id_part" ]; then
+          slug="${prefix}-${id_part}-${title_slug}"
+        else
+          slug="${parsed_slug}-${title_slug}"
+        fi
+      else
+        slug="$parsed_slug"
+      fi
+      echo "$slug"
+      return
+    fi
+  fi
+
+  # Free-form text (directive, prompt): ask Haiku for a topical slug
+  local summary=""
+  if [ -n "$SOURCES_PROMPT" ]; then
     if [ -f "$SOURCES_PROMPT" ]; then
       summary="$(head -c 200 "$SOURCES_PROMPT")"
     else
@@ -128,9 +374,9 @@ Rules:
 - No quotes, backticks, explanation, or punctuation
 
 Examples:
-"linear: SCP-142 Implement rate limiting for public API endpoints" → scp-142-rate-limiting
-"github: https://github.com/acme/app/issues/387 — Auth tokens not refreshing after session timeout" → 387-fix-token-refresh
-"Refactor the database connection pooling layer to support read replicas and add health checks" → db-pool-replicas
+"Migrate auth from cookies to JWT with refresh tokens" → auth-jwt-migration
+"Refactor database connection pooling for read replicas" → db-pool-replicas
+"Add dark mode support with theme persistence" → add-dark-mode
 
 Work: ${summary:0:200}
 SLUGEOF
