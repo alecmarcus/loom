@@ -59,13 +59,15 @@ TERM_WIDTH=$(tput cols 2>/dev/null || echo 120)
 # ─── Debug Logging ───────────────────────────────────────────────
 # Writes timestamped entries to .loom/logs/debug.log for full
 # lifecycle traceability. Every decision point logs here.
-DEBUG_LOG="$LOOM_DIR/logs/debug.log"
+# Initially buffers to a temp file so we don't pollute the source
+# project's .loom/ before worktree setup repoints LOOM_DIR.
+_DEBUG_BUFFER="$(mktemp)"
+DEBUG_LOG="$_DEBUG_BUFFER"
 debug() {
   local ts
   ts="$(date '+%Y-%m-%d %H:%M:%S.%N' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')"
   echo "[$ts] [$$] $1" >> "$DEBUG_LOG" 2>/dev/null || true
 }
-mkdir -p "$LOOM_DIR/logs" 2>/dev/null || true
 debug "─── START.SH LAUNCHED ─── pid=$$ args=$*"
 debug "SCRIPT_DIR=$SCRIPT_DIR PLUGIN_ROOT=$PLUGIN_ROOT"
 debug "PROJECT_DIR=$PROJECT_DIR LOOM_DIR=$LOOM_DIR"
@@ -852,17 +854,18 @@ setup_worktree() {
 
   # Copy .env.* variants
   for f in "$PROJECT_DIR"/.env.*; do
-    [ -f "$f" ] && cp "$f" "$WORKTREE_DIR/"
+    [ -f "$f" ] && cp "$f" "$WORKTREE_DIR/" || true
   done
 
   # Copy secret/key files if present
   for pattern in ".secret*" "*.key" "*.pem"; do
     for f in "$PROJECT_DIR"/$pattern; do
-      [ -f "$f" ] && cp "$f" "$WORKTREE_DIR/"
+      [ -f "$f" ] && cp "$f" "$WORKTREE_DIR/" || true
     done
   done
 
-  log "${CYAN}Worktree created:${NC} $WORKTREE_DIR (branch: $WORKTREE_BRANCH)"
+  # NOTE: don't log() here — LOG_FILE still points to source .loom/.
+  # The caller logs after LOOM_DIR repoint.
 }
 
 cleanup_worktree() {
@@ -1120,6 +1123,13 @@ debug "LOOM_ACTIVE=1 exported. LOOM_PREVIEW=${LOOM_PREVIEW:-<unset>}"
 # ─── Cleanup ─────────────────────────────────────────────────────
 cleanup() {
   local exit_code=$?
+  # Flush debug buffer if it was never finalized (early exit)
+  if [ -f "${_DEBUG_BUFFER:-}" ]; then
+    mkdir -p "$LOOM_DIR/logs" 2>/dev/null || true
+    DEBUG_LOG="$LOOM_DIR/logs/debug.log"
+    cat "$_DEBUG_BUFFER" >> "$DEBUG_LOG" 2>/dev/null || true
+    rm -f "$_DEBUG_BUFFER"
+  fi
   debug "─── CLEANUP TRAP FIRED ─── exit_code=$exit_code iteration=${ITERATION:-0}"
   debug "  LINENO=${BASH_LINENO[0]:-?} FUNCNAME=${FUNCNAME[1]:-main} BASH_COMMAND=${BASH_COMMAND:-?}"
   # Log exit for post-mortem diagnosis of silent deaths
@@ -1184,6 +1194,7 @@ if [ "$USE_WORKTREE" = "yes" ]; then
   # don't clobber each other. Source .loom/ keeps only checked-in files.
   SOURCE_LOOM_DIR="$LOOM_DIR"
   LOOM_DIR="$PROJECT_DIR/.loom"
+  mkdir -p "$LOOM_DIR"
   LOG_FILE="$LOOM_DIR/history.log"
   PID_FILE="$LOOM_DIR/.pid"
   echo $$ > "$PID_FILE"
@@ -1195,12 +1206,24 @@ if [ "$USE_WORKTREE" = "yes" ]; then
     DIRECTIVE_FILE="$LOOM_DIR/.directive"
   fi
   rm -f "$SOURCE_LOOM_DIR/.piped_directive"
+  log "${CYAN}Worktree created:${NC} $WORKTREE_DIR (branch: $WORKTREE_BRANCH)"
 else
   # Non-worktree runs: derive run slug from current branch
   RUN_SLUG="$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo "default")"
   RUN_SLUG="$(echo "$RUN_SLUG" | sed 's/[^a-zA-Z0-9-]/-/g')"
   TMUX_SESSION="loom-${PROJECT_NAME}-${RUN_SLUG}"
 fi
+
+# ─── Finalize debug log ──────────────────────────────────────
+# LOOM_DIR is now final (repointed to worktree if applicable).
+# Flush the temp buffer into the real debug log.
+mkdir -p "$LOOM_DIR/logs" 2>/dev/null || true
+DEBUG_LOG="$LOOM_DIR/logs/debug.log"
+if [ -f "$_DEBUG_BUFFER" ]; then
+  cat "$_DEBUG_BUFFER" >> "$DEBUG_LOG" 2>/dev/null || true
+  rm -f "$_DEBUG_BUFFER"
+fi
+debug "LOOM_DIR finalized to $LOOM_DIR"
 
 # ─── MCP Capability Detection ────────────────────────────────
 CAPABILITY_MAP=(
