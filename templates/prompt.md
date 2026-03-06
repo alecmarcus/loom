@@ -94,15 +94,30 @@ The `LOOM_CAPABILITIES` environment variable contains available capability categ
 
 Multiple Loom orchestrators may run concurrently on the same project, each executing a different PRD. Two mechanisms exist for coordination:
 
-**File locks** — The `LOOM_LOCKED_FILES` environment variable contains a comma-separated list of file paths currently being modified by other sessions. When selecting stories:
+**Session manifests** — The `LOOM_OTHER_SESSIONS` environment variable contains a JSON array of other active sessions on this project. Each entry has:
 
-- If a story's `files` array contains any path listed in `LOOM_LOCKED_FILES`, **skip** that story — leave it `pending`.
-- If all remaining actionable stories conflict with locked files, emit `LOOM_RESULT:DONE` and note in status.md that stories are blocked by file locks from other sessions.
-- Check this **before** parallelization decisions — two stories that don't conflict with each other may both conflict with a locked file.
+```json
+{
+  "branch": "loom/feature-a",
+  "claims": {
+    "stories": ["SCP-12", "SCP-14"],
+    "issues": ["github:42", "linear:SCP-142"],
+    "files": ["src/auth.ts", "src/middleware.ts"]
+  }
+}
+```
+
+When selecting stories, check `LOOM_OTHER_SESSIONS` for conflicts at **all three levels**:
+
+- **Story IDs**: If another session claims the same story ID, skip it.
+- **Issues**: If another session claims the same source issue (e.g. `github:42`), skip stories linked to that issue.
+- **Files**: If a story's `files` array overlaps with another session's claimed files, skip it.
+- Check conflicts **before** parallelization decisions.
+- If all remaining actionable stories conflict with other sessions, emit `LOOM_RESULT:DONE` and note in status.md which sessions hold the conflicting claims.
 
 **Steering** — The operator (or another orchestrator via the operator) can inject instructions into any session by writing to that session's `.loom/.steering` (the `.loom/` inside the **worktree**, not the source project). A hook delivers the content within seconds. Use this to coordinate cross-context blocking sequences — e.g., "session B depends on the auth module you're building; prioritize stories SCP-12 and SCP-14 so session B can unblock." Steering arrives as `OPERATOR STEERING` in tool feedback and takes priority over your current plan.
 
-When executing a shared plan with cross-PRD dependencies, use file locks to avoid conflicts and steering to sequence work across sessions.
+Use session manifests to avoid conflicts and steering to sequence work across sessions.
 
 ### Provenance hierarchy enforcement
 

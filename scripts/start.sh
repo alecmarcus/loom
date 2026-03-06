@@ -1296,116 +1296,115 @@ _Completed $(date -u '+%Y-%m-%dT%H:%M:%SZ')_"
   esac
 }
 
-# ─── Cross-PRD File Locking ──────────────────────────────────────
-# When multiple PRDs run concurrently on the same project, their
-# stories may touch overlapping files. A shared lock directory under
-# ~/.claude-worktrees/<project>/.file-locks/ tracks which files each
-# session claims. The orchestrator skips stories that conflict with
-# other active sessions.
-FILE_LOCK_DIR=""
-LOOM_LOCKED_FILES=""
+# ─── Cross-Session Coordination ──────────────────────────────────
+# When multiple Loom sessions run concurrently on the same project,
+# each publishes a session manifest to a shared directory:
+#   ~/.claude-worktrees/<project>/.sessions/<slug>.json
+# Manifests carry claims at three levels — stories, issues, files —
+# so orchestrators can avoid conflicts and coordinate blocking
+# sequences across PRDs. Stale manifests (dead PIDs) are auto-cleaned.
+SESSION_DIR=""
+LOOM_OTHER_SESSIONS=""
 
-init_file_lock_dir() {
+init_session_dir() {
   local base_dir="$HOME/.claude-worktrees/$PROJECT_NAME"
-  FILE_LOCK_DIR="$base_dir/.file-locks"
-  mkdir -p "$FILE_LOCK_DIR" 2>/dev/null || true
+  SESSION_DIR="$base_dir/.sessions"
+  mkdir -p "$SESSION_DIR" 2>/dev/null || true
 }
 
-# Extract pending story files from a PRD.
-extract_prd_files() {
+# Extract claims from the PRD: pending story IDs, their files, and
+# any source-linked issues (github:<num>, linear:<id>).
+extract_prd_claims() {
   local prd="$1"
   [ -f "$prd" ] || return
-  jq -r '[.stories[] | select(.status != "done" and .status != "cancelled") | .files[]?] | unique | .[]' "$prd" 2>/dev/null
+  jq -c '{
+    stories: [.stories[] | select(.status != "done" and .status != "cancelled") | .id] | unique,
+    issues:  [.stories[] | select(.status != "done" and .status != "cancelled") |
+              (.source // empty) | capture("(?<type>github|linear)[:/](?<ref>.+)") |
+              "\(.type):\(.ref)"] | unique,
+    files:   [.stories[] | select(.status != "done" and .status != "cancelled") | .files[]?] | unique
+  }' "$prd" 2>/dev/null
 }
 
-# Register this session's file claims from the PRD.
-# Called before the main loop and refreshed each iteration.
-register_file_locks() {
-  [ -z "$FILE_LOCK_DIR" ] && return 0
+# Write this session's manifest. Called before the main loop and
+# refreshed each iteration (story statuses change as work completes).
+publish_session() {
+  [ -z "$SESSION_DIR" ] && return 0
   [ -z "$PRD_PATH" ] || [ ! -f "$PRD_PATH" ] && return 0
 
   local slug="${WORKTREE_BRANCH:-$$}"
   slug="${slug//\//-}"
 
-  local files_json
-  files_json=$(extract_prd_files "$PRD_PATH" | jq -Rs 'split("\n") | map(select(. != ""))')
-  [ -z "$files_json" ] || [ "$files_json" = "[]" ] && return 0
+  local claims
+  claims=$(extract_prd_claims "$PRD_PATH")
+  [ -z "$claims" ] && return 0
 
   jq -n \
     --arg pid "$$" \
     --arg branch "${WORKTREE_BRANCH:-}" \
     --arg prd "$PRD_PATH" \
-    --arg started "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-    --argjson files "$files_json" \
-    '{pid: ($pid | tonumber), branch: $branch, prd: $prd, started: $started, files: $files}' \
-    > "$FILE_LOCK_DIR/${slug}.json" 2>/dev/null
+    --arg updated "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    --arg iteration "${ITERATION:-0}" \
+    --arg source_type "${LOOM_SOURCE_TYPE:-}" \
+    --arg source_ref "${LOOM_SOURCE_REF:-}" \
+    --argjson claims "$claims" \
+    '{pid: ($pid | tonumber), branch: $branch, prd: $prd,
+      updated: $updated, iteration: ($iteration | tonumber),
+      source: (if $source_type != "" then {type: $source_type, ref: $source_ref} else null end),
+      claims: $claims}' \
+    > "$SESSION_DIR/${slug}.json" 2>/dev/null
 
-  debug "File locks registered: $(echo "$files_json" | jq 'length') files → $FILE_LOCK_DIR/${slug}.json"
+  debug "Session manifest published → $SESSION_DIR/${slug}.json"
 }
 
-# Check for file overlaps with other active Loom sessions.
-# Sets LOOM_LOCKED_FILES (comma-separated) for the orchestrator.
-check_file_conflicts() {
-  [ -z "$FILE_LOCK_DIR" ] && return 0
-  [ -z "$PRD_PATH" ] || [ ! -f "$PRD_PATH" ] && return 0
+# Read other sessions' manifests. Cleans stale entries (dead PIDs).
+# Sets LOOM_OTHER_SESSIONS (JSON array) for the orchestrator.
+collect_other_sessions() {
+  [ -z "$SESSION_DIR" ] && return 0
 
   local my_slug="${WORKTREE_BRANCH:-$$}"
   my_slug="${my_slug//\//-}"
 
-  local my_files
-  my_files=$(extract_prd_files "$PRD_PATH" | sort)
-  [ -z "$my_files" ] && return 0
+  local sessions="[]"
 
-  local all_locked="" conflict_report=""
+  for manifest in "$SESSION_DIR"/*.json; do
+    [ -f "$manifest" ] || continue
+    [ "$(basename "$manifest" .json)" = "$my_slug" ] && continue
 
-  for lock_file in "$FILE_LOCK_DIR"/*.json; do
-    [ -f "$lock_file" ] || continue
-    [ "$(basename "$lock_file" .json)" = "$my_slug" ] && continue
+    local other_pid
+    other_pid=$(jq -r '.pid' "$manifest" 2>/dev/null)
 
-    local other_pid other_branch
-    other_pid=$(jq -r '.pid' "$lock_file" 2>/dev/null)
-    other_branch=$(jq -r '.branch' "$lock_file" 2>/dev/null)
-
-    # Stale lock: PID dead → remove
+    # Stale manifest: PID dead → remove
     if [ -n "$other_pid" ] && ! kill -0 "$other_pid" 2>/dev/null; then
-      debug "Removing stale file lock: $lock_file (pid $other_pid dead)"
-      rm -f "$lock_file"
+      debug "Removing stale session manifest: $manifest (pid $other_pid dead)"
+      rm -f "$manifest"
       continue
     fi
 
-    local other_files
-    other_files=$(jq -r '.files[]' "$lock_file" 2>/dev/null | sort)
-    [ -z "$other_files" ] && continue
-
-    local overlap
-    overlap=$(comm -12 <(echo "$my_files") <(echo "$other_files"))
-    if [ -n "$overlap" ]; then
-      local overlap_count
-      overlap_count=$(echo "$overlap" | wc -l | tr -d ' ')
-      conflict_report="${conflict_report}  ${other_branch} (${overlap_count} files)\n"
-      all_locked="${all_locked}${overlap}"$'\n'
-    fi
+    sessions=$(jq --slurpfile m "$manifest" '. + $m' <<< "$sessions" 2>/dev/null)
   done
 
-  if [ -n "$conflict_report" ]; then
-    log "${YELLOW}File conflicts with other active sessions:${NC}"
-    echo -e "$conflict_report" | while IFS= read -r line; do
-      [ -n "$line" ] && log "$line" || true
+  local count
+  count=$(jq 'length' <<< "$sessions")
+  if [ "$count" -gt 0 ]; then
+    log "${YELLOW}${count} other active session(s) on this project${NC}"
+    jq -r '.[] | "  \(.branch) — \(.claims.stories | length) stories, \(.claims.files | length) files"' <<< "$sessions" | while IFS= read -r line; do
+      log "$line" || true
     done
   fi
 
-  LOOM_LOCKED_FILES=$(echo "$all_locked" | sort -u | grep -v '^$' | paste -sd, - || true)
-  export LOOM_LOCKED_FILES
-  debug "LOOM_LOCKED_FILES=${LOOM_LOCKED_FILES:-<none>}"
+  LOOM_OTHER_SESSIONS="$sessions"
+  export LOOM_OTHER_SESSIONS
+  debug "LOOM_OTHER_SESSIONS: $count session(s)"
 }
 
-# Remove this session's lock file.
-release_file_locks() {
-  [ -z "$FILE_LOCK_DIR" ] && return 0
+# Remove this session's manifest.
+unpublish_session() {
+  [ -z "$SESSION_DIR" ] && return 0
   local slug="${WORKTREE_BRANCH:-$$}"
   slug="${slug//\//-}"
-  rm -f "$FILE_LOCK_DIR/${slug}.json" 2>/dev/null || true
-  debug "File locks released: ${slug}"
+  rm -f "$SESSION_DIR/${slug}.json" 2>/dev/null || true
+  debug "Session manifest removed: ${slug}"
 }
 
 # ─── Preflight ───────────────────────────────────────────────────
@@ -1466,8 +1465,8 @@ cleanup() {
   else
     debug "  skipping create_pr (ITERATION=0)"
   fi
-  debug "  releasing file locks"
-  release_file_locks
+  debug "  unpublishing session manifest"
+  unpublish_session
   debug "  removing sentinels"
   rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh" "$LOOM_DIR/.steering" "$LOOM_DIR/.tracking_comment_id"
   # Kill the tmux session — helper panes are useless without the loop
@@ -1835,10 +1834,10 @@ mkdir -p "$LOOM_DIR/logs"
 rm -f "$LOOM_DIR/.iteration_marker"
 debug "Stale sentinels cleaned. Entering main loop. MAX_ITERATIONS=$MAX_ITERATIONS"
 
-# ─── Initialize file locks (cross-PRD conflict detection) ───────
-init_file_lock_dir
-register_file_locks
-check_file_conflicts
+# ─── Initialize cross-session coordination ──────────────────────
+init_session_dir
+publish_session
+collect_other_sessions
 
 # ─── Initialize source tracking ─────────────────────────────────
 init_source_tracking
@@ -1882,9 +1881,9 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
     debug "Steering consumed: ${#STEERING_CONTENT} chars, archived to logs/steering-iter${ITERATION}.md"
   fi
 
-  # ─── Refresh file locks (PRD statuses may have changed) ───
-  register_file_locks
-  check_file_conflicts
+  # ─── Refresh session manifest (PRD statuses change as stories complete) ──
+  publish_session
+  collect_other_sessions
 
   # ─── Build prompt ───────────────────────────────────────────
   if [ -n "$DIRECTIVE_FILE" ]; then
