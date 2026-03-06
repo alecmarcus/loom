@@ -6,16 +6,23 @@
 # loop actually loops — the agent cannot ignore this.
 # ─────────────────────────────────────────────────────────────────
 
-# No-op outside Loom — detect via .loom/.pid marker
+# No-op outside Loom — detect via .loom/.pid with live PID check
+_is_loom() {
+  local d="$1"
+  [ -f "$d/.pid" ] || return 1
+  local pid; pid=$(cat "$d/.pid" 2>/dev/null) || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
 LOOM_DIR="${PWD}/.loom"
-[ -f "$LOOM_DIR/.pid" ] || LOOM_DIR="${CLAUDE_PROJECT_DIR:-.}/.loom"
+_is_loom "$LOOM_DIR" || LOOM_DIR="${CLAUDE_PROJECT_DIR:-.}/.loom"
 DEBUG_LOG="$LOOM_DIR/logs/debug.log"
 _dbg() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [status-kill] $1" >> "$DEBUG_LOG" 2>/dev/null || true; }
 
 _dbg "fired. LOOM_DIR=$LOOM_DIR LOOM_PREVIEW=${LOOM_PREVIEW:-<unset>}"
 
-if [ ! -f "$LOOM_DIR/.pid" ]; then
-  _dbg "  → exit 0 (no .pid marker)"
+if ! _is_loom "$LOOM_DIR"; then
+  _dbg "  → exit 0 (no live .pid)"
   exit 0
 fi
 
