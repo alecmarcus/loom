@@ -298,10 +298,9 @@ Each review subagent prompt must include:
    - Does the code do what the story describes, or something subtly different?
    - Does the diff include changes not related to this story?
    - Are there bugs, edge cases, or correctness issues?
-   - Are there patterns worth remembering for future iterations?
    - **Provenance check:** Can every changed hunk trace to a specific requirement or decision? Flag untraceable changes.
    - **Thematic review:** Beyond the literal checklist, what architectural concern does the story point at? Consider whether the implementation addresses the underlying design intent, not just the surface requirements.
-8. Do not classify severity. Findings are binary: **ACTION** (must fix) or **LEARNING** (worth remembering). Everything actionable must be done. Documenting a bug instead of fixing it is never acceptable.
+8. **Every finding is a MUST FIX.** There is no "suggestion" or "learning" category. If the reviewer identifies it, it must be fixed. The only valid reason to skip a finding is if the orchestrator verifies it is **factually incorrect** (the reviewer misread the code or misunderstood the requirement). "Not worth fixing" is never a valid reason to skip.
 ```
 STORY: <story-id>
 CRITERIA:
@@ -310,47 +309,33 @@ CRITERIA:
 PROVENANCE:
   - <file>:<line-range> — traces to <requirement/decision reference>
   - <file>:<line-range> — NO PROVENANCE: <description of untraceable change>
-ACTION:
+ISSUES:
   - <file>:<line-range> — <description>
-LEARNING:
-  - <description> — <why this matters for future work>
 ```
 
 After launching all review subagents, **stop and wait**. Do not make any tool calls. Do not poll with Bash. Results arrive automatically.
 
-#### 4.6.5 — Process Findings
+#### 4.6.5 — Fix All Findings
 
-**Before processing, reclassify miscategorized findings.** Scan all LEARNING items — if any describe bugs, dead code, correctness errors, wrong API usage, unreachable paths, or broken integration points, reclassify them as ACTIONs. The orchestrator is the last gate before commit — do not let bugs through as documentation.
+**Verify, then fix.** For each finding, the orchestrator's only permitted action is:
 
-For each review result, split findings into two tracks:
+1. **Verify truthiness** — re-read the code the reviewer cited. Is the finding factually correct? Did the reviewer misread the code or misunderstand the requirement?
+2. If **factually incorrect** (the code is actually correct and the reviewer was wrong) → skip it with an explicit note: `SKIPPED: <finding> — <why it's wrong>`
+3. If **correct or plausibly correct** → it must be fixed. "Not important enough" is not a valid reason to skip.
 
-**Actions** — fix them now:
+**Fix process:**
 
-1. If any story has ACTION items, launch **one fix subagent per story** with `isolation: "worktree"`. Each receives the original story object and only its ACTION items. Instructions: fix the identified issues — no refactoring, no extra features.
+1. Launch **one fix subagent per story** that has findings, with `isolation: "worktree"`. Each receives the original story object and its findings. Instructions: fix the identified issues — no refactoring, no extra features.
 2. After fix subagents complete, merge fix branches (same process as Step 3.1).
 3. Run the full test suite.
 4. If tests pass, commit: `fix(<scope>): address review findings for <story-id>`
 5. If tests fail, `git revert` the fix commits — the original code was green. Log the failure in status.md.
-6. If no stories have ACTION items, skip straight to learnings.
 
 **One review cycle, one fix cycle. No recursion.**
 
-**Immediate memory save** — before processing learnings, save any architectural decisions or code patterns discovered during the review to Vestige now. The review phase often surfaces the most valuable learnings, and delaying risks losing them if the iteration is interrupted. Use `mcp__vestige__codebase(action: "remember_pattern", ...)` or `mcp__vestige__codebase(action: "remember_decision", ...)` as appropriate.
-
-**Learnings** — capture them:
-
-For each LEARNING item, decide the appropriate destination (one or both):
-
-- **Vestige** — patterns, gotchas, or decisions useful to future iterations with no memory of this one. Use `mcp__vestige__codebase(action: "remember_pattern", ...)` or `mcp__vestige__smart_ingest(...)`.
-- **Artifacts** — conventions, constraints, or API behaviors that belong in project documentation. Update the relevant `.docs/` directory, `CLAUDE.md`, or inline code comments.
-
-Do not discard learnings. Every LEARNING must be stored somewhere.
-
 ### 4.7 — Store Operational Learnings in Memory
 
-Review learnings from 4.6.5 are already captured. This step covers learnings from your **own execution** — things you discovered while orchestrating, merging, or debugging that weren't flagged by reviewers.
-
-Use Vestige to store any operational learnings from this iteration:
+Use Vestige to store any operational learnings from this iteration — things you discovered while orchestrating, merging, or debugging:
 
 - **Code patterns discovered:** `mcp__vestige__codebase(action: "remember_pattern", ...)` — e.g. "always use dependency injection for service classes"
 - **Architectural decisions made:** `mcp__vestige__codebase(action: "remember_decision", ...)` — e.g. "chose approach X over Y because Z"
@@ -390,7 +375,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 | **Tests Added / Updated** | List of new or modified test files.                                              |
 | **Tool-Gated Stories**    | Stories skipped because required capabilities aren't available (story ID, missing capability). |
 | **Subagent Outcomes**     | For each subagent: story ID, pass/fail, brief summary.                           |
-| **Review Outcomes**       | For each reviewed story: actions taken (description, fix success/fail), learnings captured (description, destination: vestige/artifact/both). Omit if review was skipped. |
+| **Review Outcomes**       | For each reviewed story: findings count, fixes applied (success/fail), any findings skipped with justification. Omit if review was skipped. |
 
 ---
 

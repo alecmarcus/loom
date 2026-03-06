@@ -150,7 +150,7 @@ The review subagent prompt must include:
    - Are there bugs, dead code, unreachable paths, correctness errors, or wrong API usage?
    - **Provenance check:** Can every changed hunk trace to a specific directive requirement? Flag untraceable changes.
    - **Thematic review:** Beyond the literal checklist, what architectural concern does the directive point at? Consider whether the implementation addresses the underlying design intent, not just the surface requirements.
-7. Do not classify severity. Findings are binary: actionable or non-actionable. Everything actionable must be fixed. Documenting a bug instead of fixing it is never acceptable.
+7. **Every finding is a MUST FIX.** There is no "suggestion" or "non-blocking" category. If the reviewer identifies it, it must be fixed. The only valid reason to skip a finding is if the orchestrator verifies it is **factually incorrect** (the reviewer misread the code or misunderstood the requirement).
 8. Required structured output format:
 ```
 REVIEW_RESULT: PASS | FAIL
@@ -163,26 +163,28 @@ PROVENANCE:
   - <file>:<line-range> — NO PROVENANCE: <description of untraceable change>
 ISSUES:
   - <file>:<line-range> — <description>
-SUGGESTIONS:
-  - <description> (optional, non-blocking)
 ```
 
 After launching the review subagent, **stop and wait**. Do not make any tool calls. Do not poll with Bash. Results arrive automatically.
 
-#### 3.4.5 — Collect and Assess Findings
+#### 3.4.5 — Fix All Findings
 
-**Before assessing, reclassify miscategorized findings.** Scan all minor issues and suggestions — if any describe bugs, dead code, correctness errors, wrong API usage, unreachable paths, or broken integration points, reclassify them MUST FIX action items. The orchestrator is the last gate before commit — do not let findings with action items through. Period.
+**Verify, then fix.** For each finding, the orchestrator's only permitted action is:
 
-- **PASS AND no actionable issues** → review complete, proceed to 3.5
-- **FAIL OR any actionable issues, even minor suggestions** → proceed to 3.4.6
+1. **Verify truthiness** — re-read the code the reviewer cited. Is the finding factually correct?
+2. If **factually incorrect** (the code is actually correct and the reviewer was wrong) → skip with an explicit note: `SKIPPED: <finding> — <why it's wrong>`
+3. If **correct or plausibly correct** → it must be fixed.
 
-#### 3.4.6 — Launch Fix Subagent (if needed)
+- **PASS and no issues** → review complete, proceed to 3.5
+- **FAIL or any issues** → launch fix subagent below
+
+#### 3.4.6 — Launch Fix Subagent
 
 Launch **one fix subagent** with `isolation: "worktree"`. It receives:
 
 1. The original directive text
-2. The specific review findings (FAIL requirements and all actionable issues)
-3. Instructions to fix only the identified issues — no refactoring, no extra features
+2. All review findings (FAIL requirements and all issues)
+3. Instructions to fix the identified issues — no refactoring, no extra features
 
 After the fix subagent completes:
 
@@ -236,7 +238,7 @@ Overwrite `.loom/status.md` with a fresh report:
 | **Fixed This Iteration** | Any previously-failing tests that now pass. |
 | **Tests Added / Updated** | List of new or modified test files. |
 | **Work Summary** | What the directive accomplished this iteration. |
-| **Review Outcomes** | PASS/FAIL, issues found with description and references, fixes applied (success/fail). Omit if review was skipped. |
+| **Review Outcomes** | PASS/FAIL, findings count, fixes applied (success/fail), any findings skipped with justification. Omit if review was skipped. |
 
 ---
 
