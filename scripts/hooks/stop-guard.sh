@@ -35,6 +35,16 @@ if [ "$STOP_ACTIVE" = "true" ]; then
   exit 0
 fi
 
+# ─── Rate limit: don't block forever if agent is out of usage ─────
+BLOCK_COUNT_FILE="$LOOM_DIR/.stop_guard_blocks"
+BLOCK_COUNT=0
+[ -f "$BLOCK_COUNT_FILE" ] && BLOCK_COUNT=$(cat "$BLOCK_COUNT_FILE" 2>/dev/null || echo 0)
+if [ "$BLOCK_COUNT" -ge 2 ] 2>/dev/null; then
+  _dbg "  → exit 0 (blocked $BLOCK_COUNT times already, releasing)"
+  rm -f "$BLOCK_COUNT_FILE"
+  exit 0
+fi
+
 # ─── Check: status.md updated this iteration ─────────────────────
 # start.sh touches .iteration_marker at the start of each iteration.
 # If status.md is older than the marker, the agent skipped the status update.
@@ -42,7 +52,8 @@ fi
 if [ -f "$LOOM_DIR/.iteration_marker" ]; then
   MARKER_TS=$(stat -f %m "$LOOM_DIR/.iteration_marker" 2>/dev/null || echo "?")
   if [ ! -f "$LOOM_DIR/status.md" ]; then
-    _dbg "  status.md MISSING (marker=$MARKER_TS) → exit 2 (BLOCK)"
+    echo $((BLOCK_COUNT + 1)) > "$BLOCK_COUNT_FILE"
+    _dbg "  status.md MISSING (marker=$MARKER_TS, block=$((BLOCK_COUNT + 1))) → exit 2 (BLOCK)"
     cat >&2 <<'MSG'
 You have not updated .loom/status.md this iteration.
 
@@ -61,7 +72,8 @@ MSG
 
   STATUS_TS=$(stat -f %m "$LOOM_DIR/status.md" 2>/dev/null || echo "?")
   if [ "$LOOM_DIR/status.md" -ot "$LOOM_DIR/.iteration_marker" ]; then
-    _dbg "  status.md STALE (status=$STATUS_TS < marker=$MARKER_TS) → exit 2 (BLOCK)"
+    echo $((BLOCK_COUNT + 1)) > "$BLOCK_COUNT_FILE"
+    _dbg "  status.md STALE (status=$STATUS_TS < marker=$MARKER_TS, block=$((BLOCK_COUNT + 1))) → exit 2 (BLOCK)"
     cat >&2 <<'MSG'
 You have not updated .loom/status.md this iteration.
 
@@ -77,6 +89,7 @@ are done before writing status.md — the write triggers an immediate kill.
 MSG
     exit 2
   fi
+  rm -f "$BLOCK_COUNT_FILE"
   _dbg "  status.md OK (status=$STATUS_TS >= marker=$MARKER_TS) → allowing stop"
 else
   _dbg "  no .iteration_marker found → allowing stop"

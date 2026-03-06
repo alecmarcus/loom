@@ -1468,7 +1468,7 @@ cleanup() {
   debug "  unpublishing session manifest"
   unpublish_session
   debug "  removing sentinels"
-  rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh" "$LOOM_DIR/.steering" "$LOOM_DIR/.tracking_comment_id"
+  rm -f "$LOOM_DIR/.directive" "$LOOM_DIR"/.directive-* "$LOOM_DIR/.piped_directive" "$LOOM_DIR"/.piped_directive-* "$LOOM_DIR/.iteration_marker" "$LOOM_DIR/.stop" "$LOOM_DIR/.pid" "$LOOM_DIR/.iter_state" "$LOOM_DIR/.header-pane.sh" "$LOOM_DIR/.steering" "$LOOM_DIR/.tracking_comment_id" "$LOOM_DIR/.stop_guard_blocks"
   # Kill the tmux session — helper panes are useless without the loop
   if [ -n "${TMUX_SESSION:-}" ]; then
     debug "  killing tmux session '$TMUX_SESSION'"
@@ -1927,6 +1927,7 @@ $STEERING_CONTENT
 
   # ─── Iteration marker for stop-guard hook ──
   touch "$LOOM_DIR/.iteration_marker"
+  rm -f "$LOOM_DIR/.stop_guard_blocks"
   debug "Iteration marker touched. Prompt built (${#PROMPT} chars). PRD=$PRD_PATH"
 
   # ─── Preview: append analysis-only override ──
