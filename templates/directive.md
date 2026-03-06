@@ -63,6 +63,10 @@ Use subagents (Task tool) to parallelize independent pieces of work where possib
 
 **Source progress update:** After dispatching subagents, if `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` are set, post a progress update to the source listing what work is in progress. For GitHub: `gh issue comment $LOOM_SOURCE_REF --body "Working on: <summary>"`. For Linear: use MCP tools.
 
+After launching subagents, **stop and wait**. Do not make any tool calls. Do not implement work yourself. Do not poll with Bash. Subagent results are delivered to you automatically when each one completes. You will receive them without doing anything.
+
+**You are the orchestrator, not an implementer.** Never write production code directly. If subagents fail or hit limits, do NOT pick up their work inline — emit `LOOM_RESULT:PARTIAL`, record what failed in status.md, and let the next iteration re-dispatch them as fresh subagents.
+
 ### Visual verification
 
 If the `LOOM_CAPABILITIES` environment variable is non-empty (e.g. `browser`, `mobile`, `design`), MCP tools are available for visual verification. When the directive involves UI, visual, or interaction work:
