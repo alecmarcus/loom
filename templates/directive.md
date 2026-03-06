@@ -111,11 +111,17 @@ Keep docs concise and practical. Skip if the work was trivial.
 
 Check the `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` environment variables. If set, **update both the comment and the status** on the source:
 
-- **GitHub**: Post a comment (`gh issue comment`) **and** update the issue state if appropriate. If the directive is fully complete, close the issue: `gh issue close $LOOM_SOURCE_REF --comment "<resolution>"`. If in progress, leave open but comment with progress.
-- **Linear**: Use Linear MCP tools to comment **and** update the ticket status.
+- **GitHub**: Post a comment (`gh issue comment`) **and** update the project status to reflect current state. Use `gh issue close` / `gh issue reopen` to match the target status. Available project statuses (set via `gh project item-edit` or equivalent):
+  - **Blocked** — work is blocked by dependencies or external factors
+  - **Todo** — queued but not yet started
+  - **In Progress** — actively being worked on
+  - **Pending Review** — implementation is complete but not yet pushed or reviewed
+  - **In Review** — pushed and under human review
+  - **Done** — fully complete
+  - **Cancelled** — dropped or determined unnecessary
+- **Linear**: Use Linear MCP tools to comment **and** update the ticket status using the same status semantics above.
 - Reference specific commit hashes in every update.
-- If partially complete, explain what was done and what remains.
-- If fully complete, summarize the resolution.
+- Match the status to reality: `In Progress` while working, `Pending Review` when done but not pushed, `Done` only when fully resolved.
 
 ### 3.4 — Review Phase
 

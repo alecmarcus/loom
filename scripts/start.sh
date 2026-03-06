@@ -2028,17 +2028,20 @@ PREVIEWEOF
     --include-partial-messages \
     "$PROMPT" 2>>"$LOG_FILE" | \
     tee >(jq --unbuffered -c '
+      select(.type == "stream_event" and .event.type? == "content_block_start") |
+      {type: .event.content_block.type, name: .event.content_block.name, index: .event.index}
+    ' > "${DISPATCH_LOG%.jsonl}-debug-starts.jsonl" 2>/dev/null || true) \
+        >(jq --unbuffered -c '
       select(.type == "stream_event") |
       if (
         .event.type? == "content_block_start" and
-        .event.content_block.type? == "tool_use" and
-        (.event.content_block.name? == "Task" or .event.content_block.name? == "Agent")
+        .event.content_block.type? == "tool_use"
       ) then
-        {ts: now | strftime("%Y-%m-%d %H:%M:%S"), event: "dispatch", index: .event.index}
+        {ts: now | strftime("%Y-%m-%d %H:%M:%S"), event: "dispatch", tool: .event.content_block.name, index: .event.index}
       elif .event.type? == "content_block_stop" then
         {ts: now | strftime("%Y-%m-%d %H:%M:%S"), event: "stop", index: .event.index}
       else empty end
-    ' >> "$DISPATCH_LOG" 2>/dev/null || true) | \
+    ' >> "$DISPATCH_LOG" 2>"${DISPATCH_LOG%.jsonl}-errors.log" || true) | \
     jq --unbuffered -rj 'select(.type == "stream_event") |
       if .event.delta.type? == "text_delta" then .event.delta.text
       elif .event.type? == "content_block_start" and .event.content_block.type? == "text" and (.event.index // 0) > 0 then "\n"
@@ -2061,8 +2064,8 @@ PREVIEWEOF
   SUBAGENT_COUNT=0
   if [ -f "$DISPATCH_LOG" ] && [ -s "$DISPATCH_LOG" ]; then
     eval "$(jq -rs '
-      ([.[] | select(.event == "dispatch")] | length) as $d |
-      ([.[] | select(.event == "dispatch") | .index]) as $di |
+      ([.[] | select(.event == "dispatch" and (.tool == "Agent" or .tool == "Task"))] | length) as $d |
+      ([.[] | select(.event == "dispatch" and (.tool == "Agent" or .tool == "Task")) | .index]) as $di |
       ([.[] | select(.event == "stop") | .index]) as $si |
       ($di | map(select(. as $i | $si | index($i))) | length) as $c |
       "SUBAGENT_COUNT=\($d) SUBAGENT_COMPLETED=\($c)"

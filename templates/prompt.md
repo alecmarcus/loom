@@ -234,12 +234,17 @@ Check the `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` environment variables. If set
 
 **Update both the comment and the status** on each source:
 
-- **GitHub**: Post a comment (`gh issue comment`) **and** update the issue state if appropriate. If all stories linked to an issue are `done`, close it: `gh issue close $REF --comment "<resolution>"`. If work is in progress, leave it open but comment with progress.
-- **Linear**: Use Linear MCP tools to comment **and** update the ticket status (e.g., move to "In Progress", "Done", "In Review" as appropriate).
+- **GitHub**: Post a comment (`gh issue comment`) **and** update the project status to reflect current state. Use `gh issue close` / `gh issue reopen` to match the target status. Available project statuses (set via `gh project item-edit` or equivalent):
+  - **Blocked** — story is blocked by dependencies or external factors
+  - **Todo** — story is queued but not yet started
+  - **In Progress** — story is actively being worked on
+  - **Pending Review** — implementation is complete but not yet pushed or reviewed (use this for all stories done in loom but not yet pushed)
+  - **In Review** — pushed and under human review
+  - **Done** — fully complete, all acceptance criteria met
+  - **Cancelled** — dropped or determined unnecessary
+- **Linear**: Use Linear MCP tools to comment **and** update the ticket status using the same status semantics above.
 - Reference specific commit hashes and story IDs in every update.
-- If updating to an intermediate status, explain what was done and what remains.
-- If resolving, explain how it was resolved/fixed.
-- If closing/cancelling without resolution, justify the closure with references to sources.
+- Match the status to reality: `In Progress` while working, `Pending Review` when done in loom but not pushed, `Done` only when fully resolved. If closing/cancelling without resolution, justify the closure with references to sources.
 
 ### 4.4 — Commit (only if tests pass)
 
