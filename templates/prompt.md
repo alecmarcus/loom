@@ -90,13 +90,19 @@ The `LOOM_CAPABILITIES` environment variable contains available capability categ
 - If all remaining actionable stories are tool-gated (require capabilities not in `LOOM_CAPABILITIES`), emit `LOOM_RESULT:DONE`.
 - Stories without a `tools` field or with `"tools": []` are always eligible.
 
-### Cross-PRD file conflict avoidance
+### Cross-session coordination
 
-The `LOOM_LOCKED_FILES` environment variable contains a comma-separated list of file paths that are currently being modified by **other** concurrent Loom sessions on the same project. When selecting stories:
+Multiple Loom orchestrators may run concurrently on the same project, each executing a different PRD. Two mechanisms exist for coordination:
+
+**File locks** — The `LOOM_LOCKED_FILES` environment variable contains a comma-separated list of file paths currently being modified by other sessions. When selecting stories:
 
 - If a story's `files` array contains any path listed in `LOOM_LOCKED_FILES`, **skip** that story — leave it `pending`.
 - If all remaining actionable stories conflict with locked files, emit `LOOM_RESULT:DONE` and note in status.md that stories are blocked by file locks from other sessions.
 - Check this **before** parallelization decisions — two stories that don't conflict with each other may both conflict with a locked file.
+
+**Steering** — The operator (or another orchestrator via the operator) can inject instructions into any session by writing to `.loom/.steering`. A hook delivers the content within seconds. Use this to coordinate cross-context blocking sequences — e.g., "session B depends on the auth module you're building; prioritize stories SCP-12 and SCP-14 so session B can unblock." Steering arrives as `OPERATOR STEERING` in tool feedback and takes priority over your current plan.
+
+When executing a shared plan with cross-PRD dependencies, use file locks to avoid conflicts and steering to sequence work across sessions.
 
 ### Provenance hierarchy enforcement
 
@@ -394,7 +400,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 - **Vestige is your long-term memory across iterations.** Store patterns, decisions, and gotchas — not progress updates.
 - **Writing `status.md` is always your final action.** You will be killed immediately after. Make sure all other work is done first.
 - **If no actionable stories remain and no tests are failing**, emit `LOOM_RESULT:DONE` and update status.md to say so. The loop controller will halt — do not emit `SUCCESS`.
-- **Steering may arrive mid-iteration.** The operator can inject instructions at any time by writing to `.loom/.steering`. A hook delivers the content as tool feedback on your next tool call. When you see `OPERATOR STEERING` in tool output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
+- **Steering may arrive mid-iteration.** See "Cross-session coordination" in Step 2. When you see `OPERATOR STEERING` in tool output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
 - **NEVER call `TaskOutput`.** Subagents run with `isolation: "worktree"` — their branch names and results are delivered automatically when they complete. Calling `TaskOutput` before all subagents finish risks interrupting still-running agents. This is also enforced by a hook that will block any `TaskOutput` call.
