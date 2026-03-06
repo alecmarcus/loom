@@ -2032,7 +2032,7 @@ PREVIEWEOF
       if (
         .event.type? == "content_block_start" and
         .event.content_block.type? == "tool_use" and
-        .event.content_block.name? == "Task"
+        (.event.content_block.name? == "Task" or .event.content_block.name? == "Agent")
       ) then
         {ts: now | strftime("%Y-%m-%d %H:%M:%S"), event: "dispatch", index: .event.index}
       elif .event.type? == "content_block_stop" then
