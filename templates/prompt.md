@@ -160,7 +160,7 @@ Do **not** combine multiple stories into a single subagent.
 
 **Source progress update:** Before waiting, if `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` environment variables are set, post a brief progress update to the source listing which stories are being worked on this iteration. For GitHub: `gh issue comment $LOOM_SOURCE_REF --body "Iteration N: working on stories X, Y, Z"`. For Linear: use MCP tools to comment on the ticket.
 
-After launching all subagents, **stop and wait**. Do not make any tool calls. Do not poll with Bash. Do not check git status, read files, or monitor progress. Subagent results are delivered to you automatically when each one completes. You will receive them without doing anything.
+Launch subagents with `run_in_background: true` to run them concurrently. After launching all subagents, **stop and wait**. Do not implement work yourself. Do not poll subagent progress with Bash. Do not check git status, read files, or monitor progress. Subagent results are delivered to you automatically when each one completes.
 
 ### Step 3.1: Merge Subagent Results
 
@@ -352,7 +352,7 @@ ISSUES:
   - <file>:<line-range> — <description>
 ```
 
-After launching all review subagents, **stop and wait**. Do not make any tool calls. Do not poll with Bash. Results arrive automatically.
+After launching the review subagent, **stop and wait**. Do not poll subagent progress with Bash. Results arrive automatically.
 
 #### 4.6.5 — Fix All Findings
 
