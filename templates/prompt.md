@@ -115,7 +115,7 @@ When selecting stories, check `LOOM_OTHER_SESSIONS` for conflicts at **all three
 - Check conflicts **before** parallelization decisions.
 - If all remaining actionable stories conflict with other sessions, emit `LOOM_RESULT:DONE` and note in status.md which sessions hold the conflicting claims.
 
-**Steering** — The operator (or another orchestrator via the operator) can inject instructions into any session by writing to that session's `.loom/.steering` (the `.loom/` inside the **worktree**, not the source project). A hook delivers the content within seconds. Use this to coordinate cross-context blocking sequences — e.g., "session B depends on the auth module you're building; prioritize stories SCP-12 and SCP-14 so session B can unblock." Steering arrives as `OPERATOR STEERING` in tool feedback and takes priority over your current plan.
+**Steering** — The operator (or another orchestrator via the operator) can inject instructions into any session by writing to that session's `.loom/.steering` (the `.loom/` inside the **worktree**, not the source project). A background watcher delivers the content within seconds. Use this to coordinate cross-context blocking sequences — e.g., "session B depends on the auth module you're building; prioritize stories SCP-12 and SCP-14 so session B can unblock." Steering arrives as `OPERATOR STEERING` in output and takes priority over your current plan.
 
 Use session manifests to avoid conflicts and steering to sequence work across sessions.
 
@@ -444,7 +444,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 - **Vestige is your long-term memory across iterations.** Store patterns, decisions, and gotchas — not progress updates.
 - **Writing `status.md` is always your final action.** You will be killed immediately after. Make sure all other work is done first.
 - **If no actionable stories remain and no tests are failing**, emit `LOOM_RESULT:DONE` and update status.md to say so. The loop controller will halt — do not emit `SUCCESS`.
-- **Steering may arrive mid-iteration.** See "Cross-session coordination" in Step 2. When you see `OPERATOR STEERING` in tool output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
+- **Steering watcher.** At iteration start, launch a background steering watcher: `Bash(command: "exec $(cat .loom/.plugin_root)/scripts/steering-watcher.sh .loom", run_in_background: true)`. When steering arrives, the watcher exits and delivers the message. After receiving steering, **restart the watcher** so you can receive more. Steering takes priority over your current plan.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
 
