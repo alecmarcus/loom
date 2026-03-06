@@ -1898,8 +1898,9 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
     PROMPT="$(cat "$PROMPT_TEMPLATE")"
   fi
 
-  # Substitute PRD path placeholder
+  # Substitute placeholders
   PROMPT="${PROMPT//\{\{PRD_FILE\}\}/$PRD_PATH}"
+  PROMPT="${PROMPT//\{\{PROMPT_TEMPLATE\}\}/$PROMPT_TEMPLATE}"
 
   # Inject current branch so the orchestrator knows where commits should land
   # NOTE: no `local` — this is in the main loop body, not a function.
