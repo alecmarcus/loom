@@ -288,4 +288,3 @@ Overwrite `.loom/status.md` with a fresh report:
 - **Steering may arrive mid-iteration.** The operator can inject instructions at any time by writing to this worktree's `.loom/.steering` (not the source project's `.loom/`). A hook delivers the content as tool feedback on your next tool call. When you see `OPERATOR STEERING` in tool output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
-- **NEVER call `TaskOutput`.** Background subagent results are delivered automatically.

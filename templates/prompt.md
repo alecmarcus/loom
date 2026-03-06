@@ -447,7 +447,6 @@ Overwrite `.loom/status.md` with a fresh report containing:
 - **Steering may arrive mid-iteration.** See "Cross-session coordination" in Step 2. When you see `OPERATOR STEERING` in tool output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
-- **NEVER call `TaskOutput`.** Subagents run with `isolation: "worktree"` — their branch names and results are delivered automatically when they complete. Calling `TaskOutput` before all subagents finish risks interrupting still-running agents. This is also enforced by a hook that will block any `TaskOutput` call.
 
 ## Shell & Tool Hygiene
 
