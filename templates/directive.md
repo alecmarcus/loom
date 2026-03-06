@@ -35,14 +35,17 @@ Read `.loom/status.md`. Note any failing tests or uncommitted changes from a pre
 
 Use subagents (Task tool) to parallelize independent pieces of work where possible. Assign one distinct unit of work per subagent. Each subagent prompt **must** include:
 
-1. The assigned unit of work — clear, unambiguous instructions. **Implement to full completion** — no stubs, shells, placeholders, in-memory-only implementations, `// TODO` markers, or partial work. Every requirement must be satisfied with production-ready code. If the directive says "persist to database", persist to the actual database. If it says "call the API", call the real API. Anything less than full implementation is a failed delivery.
-2. A reminder to **read all source documents in full** before writing any code. If the directive references specs, ADRs, or external artifacts, the subagent must read them line by line — not skim or excerpt. Note which sections informed each decision.
-3. A reminder to **cite sources in commit messages** — every non-trivial implementation choice must reference the source document and section that drove it. Note judgment calls explicitly.
-4. A reminder to **search the codebase before assuming something is missing** — don't reimplement what already exists.
-5. A reminder to **only implement the assigned work** — do not "fix" existing code that seems inconsistent with other specs.
-6. A reminder to **update documentation** — if the work changes project-wide patterns, APIs, or conventions, update root `.docs/` and/or `CLAUDE.md`. Skip for trivial changes.
-7. A reminder to **search Vestige** for patterns relevant to the assigned work before coding: `mcp__vestige__search(query: "<project-name> <domain> patterns gotchas")`. Agents that query memory before implementing make better decisions.
-8. If `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` environment variables are set, include them in the subagent prompt. Tell the subagent to **post a brief completion comment** to the source when it finishes — include a one-line summary and the commit hash. For GitHub: `gh issue comment $LOOM_SOURCE_REF --body "<update>"`. For Linear: use MCP tools.
+1. **The entire unit of work** — include the full specification verbatim. Do not summarize, excerpt, or paraphrase. The subagent needs the complete specification to deliver complete work. **Implement to full completion** — no stubs, shells, placeholders, in-memory-only implementations, `// TODO` markers, or partial work. Every requirement must be satisfied with production-ready code.
+2. **Instructions to read CLAUDE.md** — the subagent must read the project root `CLAUDE.md` (and any feature-scoped `CLAUDE.md` in directories it will modify) before writing any code.
+3. **Current state summary** — what iteration this is, what other work is being done in parallel, any relevant failures or context from status.md, and any Vestige patterns you retrieved for this domain.
+4. **Additional references** — list all files the subagent should read beyond the directive itself: relevant `.docs/` directories, ADRs, specs, related test files, and any other context. Be specific — name the files and explain why each is relevant.
+5. A reminder to **read all source documents in full** before writing any code. If the directive references specs, ADRs, or external artifacts, the subagent must read them line by line — not skim or excerpt. Note which sections informed each decision.
+6. A reminder to **cite sources in commit messages** — every non-trivial implementation choice must reference the source document and section that drove it. Note judgment calls explicitly.
+7. A reminder to **search the codebase before assuming something is missing** — don't reimplement what already exists.
+8. A reminder to **only implement the assigned work** — do not "fix" existing code that seems inconsistent with other specs.
+9. A reminder to **update documentation** — if the work changes project-wide patterns, APIs, or conventions, update root `.docs/` and/or `CLAUDE.md`. Skip for trivial changes.
+10. A reminder to **search Vestige** for patterns relevant to the assigned work before coding: `mcp__vestige__search(query: "<project-name> <domain> patterns gotchas")`. Agents that query memory before implementing make better decisions.
+11. If `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` environment variables are set, include them in the subagent prompt. Tell the subagent to **post a brief completion comment** to the source when it finishes — include a one-line summary and the commit hash. For GitHub: `gh issue comment $LOOM_SOURCE_REF --body "<update>"`. For Linear: use MCP tools.
 
 **Source progress update:** After dispatching subagents, if `LOOM_SOURCE_TYPE` and `LOOM_SOURCE_REF` are set, post a progress update to the source listing what work is in progress. For GitHub: `gh issue comment $LOOM_SOURCE_REF --body "Working on: <summary>"`. For Linear: use MCP tools.
 
