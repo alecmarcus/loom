@@ -449,7 +449,7 @@ Overwrite `.loom/status.md` with a fresh report containing:
 - **Vestige is your long-term memory across iterations.** Store patterns, decisions, and gotchas — not progress updates.
 - **Writing `status.md` is always your final action.** You will be killed immediately after. Make sure all other work is done first.
 - **If no actionable stories remain and no tests are failing**, emit `LOOM_RESULT:DONE` and update status.md to say so. The loop controller will halt — do not emit `SUCCESS`.
-- **Steering watcher.** At iteration start, launch a background steering watcher: `Bash(command: "exec $(cat .loom/.plugin_root)/scripts/steering-watcher.sh .loom", run_in_background: true)`. When steering arrives, the watcher exits and delivers the message. After receiving steering, **restart the watcher** so you can receive more. Steering takes priority over your current plan.
+- **Steering.** The steering-relay hook checks for operator steering after every tool call. When you see `OPERATOR STEERING` in output, acknowledge it and adjust your plan immediately. Steering takes priority over your current plan.
 - **NEVER call `EnterPlanMode`.** Execute directly.
 - **NEVER call `AskUserQuestion`.** No human is present.
 
