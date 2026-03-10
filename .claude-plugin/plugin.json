@@ -1,7 +1,7 @@
 {
   "name": "loom",
-  "description": "Autonomous development loop — runs Claude Code continuously to implement tasks from a PRD with parallel subagents, testing, and auto-commits.",
-  "version": "1.8.9",
+  "description": "Issue-driven autonomous development — polls GitHub for actionable issues, dispatches coding agents with review cycles (coder → reviewer → arbiter), validates issues before execution, and ships PRs.",
+  "version": "2.0.0",
   "author": {
     "name": "Alec Marcus",
     "url": "https://github.com/alecmarcus"
@@ -12,15 +12,12 @@
     "autonomous",
     "automated",
     "development",
-    "iteration",
-    "loop",
-    "prd",
+    "issues",
+    "github",
     "orchestration",
     "loom",
-    "ralph",
-    "wiggum",
-    "parallel",
     "subagent",
-    "one-shot"
+    "review-cycle",
+    "issue-driven"
   ]
 }
