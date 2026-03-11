@@ -1,6 +1,6 @@
 ---
 name: start
-description: Launch the Loom orchestrator. Reads GitHub issues labeled loom:ready, validates them, dispatches coding agents, runs review cycles, and ships PRs. Optionally scope with a query.
+description: Launch the Loom orchestrator. Reads open GitHub issues, validates them, dispatches coding agents, runs review cycles, and ships PRs. Optionally scope with a query.
 argument-hint: "[<query>] — e.g., 'all auth issues', 'issue #42', or blank for everything"
 disable-model-invocation: true
 allowed-tools: Read, Agent, Bash, Grep, Glob
@@ -22,7 +22,7 @@ Read the orchestrator template and inject it as your task.
 If `$ARGUMENTS` is provided, it's a natural-language query to scope which issues the orchestrator works on:
 - `"all open issues about auth"` → filter polled issues to auth-related ones
 - `"issue #42 and its dependencies"` → work on #42 and anything it depends on
-- `"everything"` or empty → work on all `loom:ready` issues
+- `"everything"` or empty → work on all open issues
 
 Pass the query to the orchestrator as a scoping directive alongside the template.
 
