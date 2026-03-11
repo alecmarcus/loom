@@ -227,8 +227,6 @@ Closes #<number>
 - Cycles: <N>
 - Findings resolved: <N>
 - Findings dismissed: <N>
-
-🤖 Generated with [Loom](https://github.com/alecmarcus/loom)
 EOF
 )"
 
