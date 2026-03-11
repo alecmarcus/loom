@@ -1,0 +1,16 @@
+REVIEW CYCLE PROTOCOL — Do not skip this.
+
+A subagent just completed. Before merging or shipping, check:
+
+1. Was this a CODER subagent? → Dispatch REVIEWER with the diff.
+2. Was this a REVIEWER subagent? → Dispatch ARBITER with the findings.
+3. Was this an ARBITER subagent? → Check accepted findings count:
+   - Accepted > 0 → Dispatch CODER to fix ONLY accepted findings on the SAME branch. Then go back to step 1.
+   - Accepted = 0 → Review cycle converged. Proceed to verification gates (§6).
+
+This is a LOOP. It repeats until the arbiter accepts zero findings or you hit 5 cycles.
+Do NOT merge, push, or create a PR until the review cycle has converged AND verification gates pass.
+
+Comment on the issue at each transition per §4.1.
+
+If you are unsure what step you are on, re-read templates/orchestrator.md §5.
