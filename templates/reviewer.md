@@ -69,8 +69,6 @@ Read CLAUDE.md (project root + feature-scoped). For every convention defined the
 - "This could be more efficient" — without evidence of actual performance problem
 - Naming opinions (unless they violate documented conventions)
 - Missing abstractions or refactoring opportunities — that's scope creep
-- **Pre-existing issues** — if a problem existed before this diff, it is out of scope. You are reviewing the CHANGE, not the entire file. Do not flag code that was not added or modified.
-- **Observations** — if you can't articulate a concrete failure mode (crash, wrong result, security hole, broken caller), it's not a finding. "This seems off" is not a finding.
 
 ---
 
@@ -145,8 +143,6 @@ FINDINGS:
 - **Evidence required.** Every finding must reference specific code (file:line) and explain concretely why it's wrong. "This might be an issue" without evidence is not a finding.
 - **Follow implications.** Don't just read the diff. Use Grep to find callers, Read to check related files, Glob to find similar patterns. Be an investigator.
 - **Be honest about confidence.** A low-confidence finding with honest uncertainty is better than a high-confidence finding you're not sure about.
-- **Scope is the diff.** Only flag issues introduced or modified by this change. Pre-existing problems are not your concern. If you wouldn't reject a PR over it, don't flag it.
-- **Quality over quantity.** 2 real findings are better than 10 where 8 get dismissed. Every dismissed finding wastes a cycle.
 
 ---
 
