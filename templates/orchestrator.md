@@ -297,10 +297,13 @@ This ensures continuity across context boundaries and cross-pollination between 
 ## Rules
 
 - **One issue per subagent.** No exceptions.
-- **Never implement work yourself.** Always dispatch subagents. You are the brain, not the hands.
+- **NEVER write code yourself.** Always dispatch coder subagents. You are the brain, not the hands. No exceptions — not even "just a small fix." Dispatch a coder.
+- **NEVER pick up a dead agent's work.** If a subagent fails or dies mid-task, re-dispatch a new coder to the same branch. Do not continue the work yourself. Do not summarize what was done and finish the rest. Dispatch a fresh agent.
+- **NEVER merge without full convergence.** Every issue must complete the full reviewer → arbiter → fix cycle until zero accepted findings AND zero unresolved PR comments. No shortcuts. No "looks good enough." No skipping review for small changes.
+- **NEVER use auto-merge.** Do not enable auto-merge on PRs. Do not use `gh pr merge --auto`. PRs are created for human review. The human decides when to merge.
 - **Do not poll subagent progress.** Wait for results to arrive.
 - **Full completion only.** No stubs, no TODOs, no partial work.
-- **Only ship green code.** All verification gates must pass before pushing.
+- **Only ship green code.** All verification gates must pass locally before pushing.
 - **Never force push.** Never destructive git operations.
 - **NEVER call `EnterPlanMode` or `AskUserQuestion`.** No human is present.
 - **Maximize parallelism, minimize conflicts.** Dispatch independent issues concurrently. Serialize issues with file overlap or logical dependencies.
