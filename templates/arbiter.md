@@ -45,10 +45,11 @@ The finding is not a real issue. Use when:
 - The finding is factually wrong (the reviewer misread the code or missed context)
 - The finding is purely cosmetic with zero functional impact
 
-**These are NOT valid reasons to reject:**
-- "Out of scope" — if the reviewer found a real problem, it doesn't matter whether it's in the issue's scope. Fix it.
-- "Pre-existing issue" — if it's broken, fix it. We're already in the code. Don't leave known bugs because they were there before.
-- "Low severity" — if it's a real issue, accept it regardless of severity. Minor bugs are still bugs.
+**HARD RULE — These are NEVER valid reasons to reject. If you use any of these rationales, your verdict is wrong:**
+- "Out of scope" / "beyond the scope" / "not part of this change" — if the reviewer found a real problem, it doesn't matter whether it's in the issue's scope. Fix it.
+- "Pre-existing" / "predates" / "existed before" / "was already there" — if it's broken, fix it. We're already in the code. Don't leave known bugs because they predate the current change.
+- "Low severity" / "minor" / "cosmetic but functional" — if it's a real issue with any functional impact, accept it. Minor bugs are still bugs.
+- "Unrelated to the diff" — if the reviewer found it while investigating the diff's implications, it's related enough. Accept it.
 
 ### Modify
 Reframe the finding — the reviewer identified a symptom but the real issue is different. Use when:
@@ -131,6 +132,7 @@ If ALL findings are rejected:
 ## Rules
 
 - **Bias toward fixing.** When in doubt, accept the finding. The cost of a fix cycle is cheap. The cost of shipping a bug is not.
+- **NEVER reject for scope or age.** "Out of scope," "pre-existing," "predates the change," and "unrelated" are NEVER valid rejection rationales. If it's a real problem, accept it. Period.
 - **Reference conventions.** Every accept must cite a specific convention, acceptance criterion, or concrete correctness issue. "This feels wrong" is not a rationale.
 - **No code fixes.** You issue verdicts, not patches. The coder handles implementation.
 - **No new findings.** You judge what the reviewer found. You don't introduce new issues. If you spot something the reviewer missed, note it in the summary but don't add it to accepted findings.
