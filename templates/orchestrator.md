@@ -102,20 +102,41 @@ Within each wave, group issues that can safely run in parallel — meaning they 
 
 Process waves sequentially. Within each wave, dispatch all non-conflicting issues in parallel.
 
-### 4.0. Create Task List (MANDATORY)
+### 4.0. Task Tracking (MANDATORY)
 
-Before dispatching any coder, create a task list for each issue in the wave using `TaskCreate`. This is your verifiable progress tracker — the `/loop` will check it, and you must update it at every transition.
+Use `TaskCreate` to track every step as you reach it. Create each task when you begin that phase — not all at once upfront. Update to `in_progress` when starting, `completed` when done.
 
-For each issue, create these tasks:
-
+**At dispatch time** (this section), create:
 ```
 TaskCreate: "#<N>: dispatch coder"
-TaskCreate: "#<N>: dispatch reviewer"
-TaskCreate: "#<N>: dispatch arbiter"
-TaskCreate: "#<N>: check convergence"
+```
+
+**When coder completes** (§5), create:
+```
+TaskCreate: "#<N>: review cycle 1 — dispatch reviewer"
+```
+
+**When reviewer returns**, create:
+```
+TaskCreate: "#<N>: review cycle 1 — dispatch arbiter"
+```
+
+**When arbiter returns with findings > 0**, create the next cycle:
+```
+TaskCreate: "#<N>: review cycle 2 — dispatch coder fix"
+TaskCreate: "#<N>: review cycle 2 — dispatch reviewer"
+TaskCreate: "#<N>: review cycle 2 — dispatch arbiter"
+```
+
+**When converged** (accepted findings = 0), create:
+```
 TaskCreate: "#<N>: triage rejected findings"
 TaskCreate: "#<N>: resolve PR comments"
 TaskCreate: "#<N>: run local CI"
+```
+
+**When verification passes**, create:
+```
 TaskCreate: "#<N>: rebase"
 TaskCreate: "#<N>: push + create PR"
 TaskCreate: "#<N>: wait remote CI"
@@ -123,7 +144,7 @@ TaskCreate: "#<N>: merge"
 TaskCreate: "#<N>: write to memory"
 ```
 
-Update each task to `in_progress` when starting and `completed` when done. **Never claim a step is complete without updating the task.** The task list is the source of truth — not your prose.
+**Never claim a step is complete without updating the task.** The task list is the source of truth — not your prose. The `/loop` will check it.
 
 ### 4.1. Update Issue Status
 
