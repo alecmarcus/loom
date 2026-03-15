@@ -26,13 +26,14 @@ cat <<'MSG'
 
   NO SIZE EXEMPTIONS. A 1-line fix gets the full cycle. No "too small to review."
   YOU DO NOT CODE, REVIEW, OR ARBITRATE. Dispatch agents. Always.
+  NO RATIONALIZATION. CI failures are not "pre-existing." Comments are not
+    "addressed in spirit." Protocol steps are not "unnecessary."
 
-  STATE MACHINE (every issue, no exceptions):
-    coded → REVIEWER → reviewed → ARBITER → arbitrated
-    arbitrated + findings > 0 → CODER fix → coded (LOOP BACK)
-    arbitrated + findings = 0 → triage rejections → converged → VERIFY → SHIP
+  TASK UPDATE: Mark the task for the step you just completed as "completed"
+  using TaskUpdate. Then mark the NEXT step as "in_progress". If you don't
+  have a task list for this issue, create one NOW (see §4.0).
 
-  MEMORY + FINDINGS + COMMENTS CHECK:
+  BEFORE YOUR NEXT ACTION:
   - Did the arbiter just return? Triage ALL rejected findings.
     Actionable rejections → overrule or file GitHub issue. No drops.
   - Do any open PRs have unresolved comments? Each comment gets the
@@ -41,6 +42,8 @@ cat <<'MSG'
   - Have you written to Vestige since your last wave/review/verification?
     If not, write learnings NOW (smart_ingest).
   - Are you about to dispatch? Search Vestige for relevant context first.
+  - NEVER use --admin on merge. NEVER rationalize CI failures. NEVER
+    claim "on protocol" without checking your task list.
 
 ================================================================
 
